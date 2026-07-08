@@ -5,6 +5,7 @@ import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useScoreStore, type ProgramWithScore } from '@/stores/score'
 import ExportDialog from './comment/ExportDialog.vue'
+import DetailDialog from './comment/DetailDialog.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -203,8 +204,13 @@ function openExportDialog() {
   exportDialogVisible.value = true
 }
 
+/* ── 详情弹窗 ── */
+const detailDialogVisible = ref(false)
+const detailProgram = ref<ProgramWithScore | null>(null)
+
 function handleEdit(row: ProgramWithScore) {
-  ElMessage.info(`查看项目：${row.code} ${row.name}`)
+  detailProgram.value = row
+  detailDialogVisible.value = true
 }
 
 function handleDelete(row: ProgramWithScore) {
@@ -229,7 +235,7 @@ function handleSameSchool(row: ProgramWithScore) {
 
 function logout() {
   auth.logout()
-  router.push('/login')
+  router.push('/')
 }
 </script>
 
@@ -250,7 +256,7 @@ function logout() {
         <span class="header-role">管理人员</span>
         <span class="header-divider">|</span>
         <span class="header-user">{{ auth.userName }}</span>
-        <button class="logout-btn" @click="logout">退出</button>
+        <button class="logout-btn" @click="logout">退出登录</button>
       </div>
     </header>
 
@@ -496,6 +502,12 @@ function logout() {
   <ExportDialog
     v-model:visible="exportDialogVisible"
     :category-tree="CATEGORY_TREE"
+  />
+
+  <!-- ═══ 详情弹窗（组件） ═══ -->
+  <DetailDialog
+    v-model:visible="detailDialogVisible"
+    :program="detailProgram"
   />
 </template>
 

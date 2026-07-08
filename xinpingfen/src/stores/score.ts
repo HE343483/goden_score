@@ -15,6 +15,8 @@ export interface ProgramWithScore extends Program {
   award: string | null
   majorCategory: string
   subCategory: string
+  participantCount: number
+  judges: { name: string; score: number | null }[]
 }
 
 export interface ScoreState {
@@ -51,6 +53,35 @@ const MOCK_PROGRAMS: Program[] = [
   { code: 'SCDYZ26J02XA', name: '陶艺工作坊',            group: '—', teamType: '集体', school: '四川美术学院' },
   { code: 'SCDYZ26K01XA', name: '美育改革创新案例',       group: '—', teamType: '—', school: '四川师范大学' },
 ]
+
+/* 模拟评委打分数据 */
+const MOCK_JUDGE_DATA: Record<string, { count: number; judges: { name: string; score: number | null }[] }> = {
+  'SCDYZ26B01XA': { count: 40, judges: [{ name: '张教授', score: 93 }, { name: '李教授', score: 92 }, { name: '王教授', score: null }] },
+  'SCDYZ26B02XA': { count: 24, judges: [{ name: '张教授', score: 89 }, { name: '李教授', score: 87 }] },
+  'SCDYZ26B03XA': { count: 30, judges: [{ name: '王教授', score: 91 }, { name: '赵教授', score: 89 }, { name: '刘教授', score: 90 }] },
+  'SCDYZ26C01XA': { count: 60, judges: [{ name: '李教授', score: 92 }, { name: '王教授', score: 90 }] },
+  'SCDYZ26C02XA': { count: 15, judges: [{ name: '张教授', score: 86 }, { name: '赵教授', score: 85 }, { name: '刘教授', score: null }] },
+  'SCDYZ26F01XA': { count: 8, judges: [{ name: '王教授', score: 86 }, { name: '李教授', score: 85 }] },
+  'SCDYZ26B04XA': { count: 1, judges: [{ name: '张教授', score: 83 }] },
+  'SCDYZ26C04XA': { count: 1, judges: [{ name: '赵教授', score: 88 }, { name: '李教授', score: 87 }] },
+  'SCDYZ26B05XA': { count: 1, judges: [{ name: '刘教授', score: 84 }] },
+  'SCDYZ26C05XA': { count: 1, judges: [] },
+  'SCDYZ26F02XA': { count: 1, judges: [{ name: '张教授', score: null }] },
+  'SCDYZ26D01XA': { count: 1, judges: [{ name: '王教授', score: 90 }, { name: '赵教授', score: 91 }, { name: '李教授', score: 89 }] },
+  'SCDYZ26D02XA': { count: 1, judges: [{ name: '刘教授', score: 85 }] },
+  'SCDYZ26E01XA': { count: 1, judges: [{ name: '张教授', score: 87 }, { name: '王教授', score: 86 }] },
+  'SCDYZ26E02XA': { count: 1, judges: [{ name: '赵教授', score: 83 }] },
+  'SCDYZ26E03XA': { count: 1, judges: [] },
+  'SCDYZ26G01XA': { count: 1, judges: [{ name: '李教授', score: 88 }] },
+  'SCDYZ26H01XA': { count: 1, judges: [{ name: '王教授', score: null }] },
+  'SCDYZ26H02XA': { count: 12, judges: [{ name: '张教授', score: 86 }, { name: '赵教授', score: null }] },
+  'SCDYZ26I01XA': { count: 1, judges: [{ name: '刘教授', score: 91 }] },
+  'SCDYZ26I02XA': { count: 1, judges: [{ name: '王教授', score: null }] },
+  'SCDYZ26I03XA': { count: 1, judges: [] },
+  'SCDYZ26J01XA': { count: 10, judges: [{ name: '张教授', score: 89 }, { name: '李教授', score: 90 }, { name: '王教授', score: 88 }] },
+  'SCDYZ26J02XA': { count: 8, judges: [{ name: '赵教授', score: null }] },
+  'SCDYZ26K01XA': { count: 3, judges: [{ name: '刘教授', score: null }, { name: '张教授', score: null }] },
+}
 
 const STORAGE_KEY = 'expertScoreMap'
 
@@ -119,6 +150,9 @@ export const useScoreStore = defineStore('score', () => {
   const selectedCodes = ref<string[]>([])
   const editingScores = ref<Record<string, number>>({})
 
+  /* 评委评分覆盖（重新评分的记录） key: "code|judgeName" → score */
+  const judgeOverrides = ref<Record<string, number | null>>({})
+
   /* 从 name 中分离大类和小类 */
   function parseCategory(name: string): { majorCategory: string; subCategory: string } {
     const idx = name.indexOf(' / ')
@@ -132,12 +166,21 @@ export const useScoreStore = defineStore('score', () => {
     return { majorCategory: name, subCategory: '—' }
   }
 
-  /* 所有项目（合并分数状态） */
+  /* 所有项目（合并分数状态 + 评委覆盖） */
   const allPrograms = computed<ProgramWithScore[]>(() => {
     return MOCK_PROGRAMS.map(p => {
       const s = scoreMap.value[p.code] || { status: 0, score: null, award: null }
       const { majorCategory, subCategory } = parseCategory(p.name)
-      return { ...p, ...s, majorCategory, subCategory }
+      const ext = MOCK_JUDGE_DATA[p.code] || { count: 1, judges: [] }
+      /* 合并评委覆盖 */
+      const judges = ext.judges.map(j => {
+        const key = `${p.code}|${j.name}`
+        if (key in judgeOverrides.value) {
+          return { ...j, score: judgeOverrides.value[key] }
+        }
+        return j
+      })
+      return { ...p, ...s, majorCategory, subCategory, participantCount: ext.count, judges }
     })
   })
 
@@ -202,9 +245,16 @@ export const useScoreStore = defineStore('score', () => {
     selectedCodes.value = []
   }
 
+  /* 重置某个评委的评分为未评 */
+  function resetJudgeScore(code: string, judgeName: string) {
+    const key = `${code}|${judgeName}`
+    judgeOverrides.value = { ...judgeOverrides.value, [key]: null }
+  }
+
   return {
     scoreMap, keyword, school, filterStatus, selectedCodes, editingScores,
-    allPrograms, filteredPrograms,
+    allPrograms, filteredPrograms, judgeOverrides,
     submitScore, markAbandoned, markSameSchoolAvoid, requestRescore, submitToFinal, batchSubmit,
+    resetJudgeScore,
   }
 })

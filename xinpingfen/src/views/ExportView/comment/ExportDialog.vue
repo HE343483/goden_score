@@ -27,6 +27,9 @@ const store = useScoreStore()
 const allData = computed(() => store.allPrograms)
 const exporting = ref(false)
 
+/* ── 状态筛选 ── */
+const exportStatus = ref<'all' | 'scored' | 'submitted' | 'abandoned'>('all')
+
 /* ── 展开状态（默认全关） ── */
 const expandedSet = ref<Set<string>>(new Set())
 
@@ -59,11 +62,12 @@ const exportLeafList = computed<ExportLeafItem[]>(() => {
 /* ── 选中状态（默认全选） ── */
 const selectedLeafLabels = ref<Set<string>>(new Set())
 
-/* 弹窗打开时重置 */
+/* 弹窗打开时重置（默认全部未选） */
 watch(() => props.visible, (v) => {
   if (v) {
-    selectedLeafLabels.value = new Set(exportLeafList.value.map(item => item.leaf.label))
+    selectedLeafLabels.value = new Set()
     expandedSet.value = new Set()
+    exportStatus.value = 'all'
   }
 })
 
@@ -93,12 +97,19 @@ const selectedKeywords = computed(() => {
 
 const exportData = computed(() => {
   if (selectedKeywords.value.size === 0) return []
-  return allData.value.filter(d => {
+  let list = allData.value.filter(d => {
     for (const kw of selectedKeywords.value) {
       if (d.name.includes(kw)) return true
     }
     return false
   })
+  /* 状态过滤 */
+  switch (exportStatus.value) {
+    case 'scored':    list = list.filter(d => d.status >= 1); break
+    case 'submitted': list = list.filter(d => d.status === 2); break
+    case 'abandoned': list = list.filter(d => d.status === -2); break
+  }
+  return list
 })
 
 /* ── 工具函数 ── */
@@ -119,7 +130,13 @@ function getStatusText(status: number): string {
 }
 
 function getLeafCount(leaf: CatLeaf): number {
-  return allData.value.filter(d => d.name.includes(leaf.keyword)).length
+  let list = allData.value.filter(d => d.name.includes(leaf.keyword))
+  switch (exportStatus.value) {
+    case 'scored':    list = list.filter(d => d.status >= 1); break
+    case 'submitted': list = list.filter(d => d.status === 2); break
+    case 'abandoned': list = list.filter(d => d.status === -2); break
+  }
+  return list.length
 }
 
 /* ── 导出 ── */
@@ -203,6 +220,26 @@ function doExport() {
         </el-button>
       </div>
 
+      <!-- 状态筛选 -->
+      <div class="export-status-bar">
+        <span
+          :class="['export-status-pill', { 'export-status-pill--on': exportStatus === 'all' }]"
+          @click="exportStatus = 'all'"
+        >全部</span>
+        <span
+          :class="['export-status-pill', { 'export-status-pill--on': exportStatus === 'scored' }]"
+          @click="exportStatus = 'scored'"
+        >已评分</span>
+        <span
+          :class="['export-status-pill', { 'export-status-pill--on': exportStatus === 'submitted' }]"
+          @click="exportStatus = 'submitted'"
+        >已提交</span>
+        <span
+          :class="['export-status-pill', { 'export-status-pill--on': exportStatus === 'abandoned' }]"
+          @click="exportStatus = 'abandoned'"
+        >弃赛</span>
+      </div>
+
       <!-- 分类列表（默认收起） -->
       <div class="export-dialog-list">
         <template v-for="group in categoryTree" :key="group.label">
@@ -273,6 +310,41 @@ function doExport() {
 
 .export-dialog-count strong {
   color: var(--color-text);
+  font-weight: 600;
+}
+
+/* ── 状态筛选条 ── */
+.export-status-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  background: var(--color-bg-subtle, #EDE9E0);
+  padding: 3px;
+  border-radius: var(--radius-sm);
+}
+
+.export-status-pill {
+  flex: 1;
+  text-align: center;
+  padding: 4px 0;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.export-status-pill:hover {
+  color: var(--color-text);
+}
+
+.export-status-pill--on {
+  background: var(--color-card);
+  color: var(--color-text);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   font-weight: 600;
 }
 
