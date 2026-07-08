@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useScoreStore, type ProgramWithScore } from '@/stores/score'
+import ExportDialog from './comment/ExportDialog.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -11,7 +12,6 @@ const store = useScoreStore()
 
 const activeTab = ref('all')
 const exporting = ref(false)
-const lastExportTime = ref<string | null>(null)
 
 /* 大类 / 报名类型 联动筛选 */
 const majorCategoryFilter = ref('')
@@ -127,6 +127,25 @@ const stats = computed(() => {
   }
 })
 
+/* ── 分页 ── */
+const page = ref(1)
+const pageSize = 20
+
+const paginatedData = computed(() => {
+  const start = (page.value - 1) * pageSize
+  return filteredData.value.slice(start, start + pageSize)
+})
+
+function handlePageChange(p: number) {
+  page.value = p
+}
+
+/* 筛选条件变化时重置到第一页 */
+watch(
+  [catKeyword, catTeamType, activeTab, majorCategoryFilter, subCategoryFilter, () => store.keyword, () => store.school],
+  () => { page.value = 1 }
+)
+
 function getStatusText(status: number): string {
   switch (status) {
     case 0:   return '未评分'
@@ -143,75 +162,9 @@ function formatScore(score: number | null): string {
   return Number(score).toFixed(1)
 }
 
-function exportCSV() {
-  exporting.value = true
-  /* 短延迟让动画播放 */
-  setTimeout(() => {
-    const BOM = '﻿'
-    const headers = ['项目编码', '项目名称', '学校', '大类', '报名类型', '组别', '形式', '分数', '奖项', '状态']
-
-    /* 按大类分组，每组内再按报名类型分组 */
-    const groups = new Map<string, typeof filteredData.value>()
-    for (const d of filteredData.value) {
-      const key = `${d.majorCategory}|${d.subCategory}`
-      if (!groups.has(key)) groups.set(key, [])
-      groups.get(key)!.push(d)
-    }
-
-    const lines: string[] = [BOM + headers.join(',')]
-    for (const [, items] of groups) {
-      /* 分组标题行 */
-      const first = items[0]
-      lines.push(`\n【${first.majorCategory} · ${first.subCategory}】`)
-      for (const d of items) {
-        lines.push([
-          d.code,
-          `"${d.name}"`,
-          `"${d.school}"`,
-          `"${d.majorCategory}"`,
-          d.subCategory,
-          d.group,
-          d.teamType,
-          formatScore(d.score),
-          d.award || '',
-          getStatusText(d.status),
-        ].join(','))
-      }
-    }
-    const csv = lines.join('\n')
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    const now = new Date()
-    const ts = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`
-    a.download = `艺术展演评分表_${ts}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
-
-    lastExportTime.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`
-    exporting.value = false
-    ElMessage.success(`已导出 ${filteredData.value.length} 项数据`)
-  }, 300)
-}
-
 /* ── 分类面板交互 ── */
 function toggleGroup(label: string) {
   expandedGroup.value = expandedGroup.value === label ? '' : label
-}
-
-function selectCatGroup(group: CatGroup) {
-  /* 点击分组标题：切换到按 teamType 筛选 */
-  if (catActiveLabel.value === group.label) {
-    /* 再次点击取消 */
-    clearCatFilter()
-    return
-  }
-  catKeyword.value = ''
-  catTeamType.value = group.teamType || ''
-  catActiveLabel.value = group.label
-  expandedGroup.value = group.label
 }
 
 function selectCatLeaf(group: CatGroup, leaf: CatLeaf) {
@@ -241,6 +194,13 @@ function getCatGroupCount(group: CatGroup): number {
 
 function getCatLeafCount(leaf: CatLeaf): number {
   return allData.value.filter(d => d.name.includes(leaf.keyword)).length
+}
+
+/* ── 导出弹窗 ── */
+const exportDialogVisible = ref(false)
+
+function openExportDialog() {
+  exportDialogVisible.value = true
 }
 
 function handleEdit(row: ProgramWithScore) {
@@ -342,7 +302,7 @@ function logout() {
           </div>
           </el-form-item>
           </el-col>
-          <el-col :span="6">
+          <el-col :span="4">
           <el-form-item label="学校" prop="school">
           <div class="toolbar-search">
             <el-input
@@ -393,7 +353,7 @@ function logout() {
               size="default"
               :loading="exporting"
               :class="{ 'seal-btn': !exporting }"
-              @click="exportCSV"
+              @click="openExportDialog"
             >
               <span v-if="!exporting" class="seal-btn-inner">
                 <span>导出</span>
@@ -421,15 +381,14 @@ function logout() {
 
             <!-- 遍历分组 -->
             <template v-for="group in CATEGORY_TREE" :key="group.label">
-              <!-- 分组标题行 -->
+              <!-- 分组标题行（点击展开/收起） -->
               <div
                 :class="['cat-item', 'cat-item--group', {
-                  'cat-item--active': catActiveLabel === group.label,
                   'cat-item--expanded': expandedGroup === group.label,
                 }]"
-                @click="selectCatGroup(group)"
+                @click="toggleGroup(group.label)"
               >
-                <span class="cat-item__arrow" @click.stop="toggleGroup(group.label)">
+                <span class="cat-item__arrow">
                   {{ expandedGroup === group.label ? '▾' : '▸' }}
                 </span>
                 <span class="cat-item__name">{{ group.label }}</span>
@@ -456,7 +415,7 @@ function logout() {
 
         <!-- 表格 -->
         <el-table
-          :data="filteredData"
+          :data="paginatedData"
           border
           size="small"
           style="width:100%"
@@ -512,14 +471,17 @@ function logout() {
           </el-table-column>
         </el-table>
 
-        <!-- 表格底部摘要 -->
-        <div class="table-footer">
-          <span class="table-footer-text">
-            共 {{ filteredData.length }} 项
-            <template v-if="activeTab === 'all'">
-              · 已评分 {{ stats.scored }} · 已提交 {{ stats.submitted }} · 弃赛 {{ stats.abandoned }}
-            </template>
-          </span>
+        <!-- 分页 -->
+        <div class="table-pagination-wrap">
+          <el-pagination
+            v-model:current-page="page"
+            :page-size="pageSize"
+            :total="filteredData.length"
+            layout="total, prev, pager, next"
+            background
+            small
+            @current-change="handlePageChange"
+          />
         </div>
       </div>
     </div>
@@ -529,6 +491,12 @@ function logout() {
       <span class="footer-text">© 四川省大学生艺术展演 · 评鉴录</span>
     </footer>
   </div>
+
+  <!-- ═══ 导出弹窗（组件） ═══ -->
+  <ExportDialog
+    v-model:visible="exportDialogVisible"
+    :category-tree="CATEGORY_TREE"
+  />
 </template>
 
 <style scoped>
@@ -944,19 +912,13 @@ function logout() {
 .status-badge--\-3 { background: #F0EDF5; color: #7B6FA0; }
 .status-badge--\-3 .status-dot { background: #7B6FA0; }
 
-/* 表格底部 */
-.table-footer {
+/* 表格底部 — 分页容器 */
+.table-pagination-wrap {
   display: flex;
   justify-content: flex-end;
-  padding: 12px 0;
+  padding: 12px 0 4px;
   border-top: 1px solid var(--color-border-light);
   margin-top: 4px;
-}
-
-.table-footer-text {
-  font-size: 12px;
-  color: var(--color-text-muted);
-  letter-spacing: 0.3px;
 }
 
 /* ═══ 分类筛选面板 ═══ */
