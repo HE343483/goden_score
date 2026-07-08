@@ -1,1 +1,0 @@
-# goden_score
