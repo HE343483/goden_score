@@ -5,12 +5,12 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
-      path: '/login',
+      path: '/',
       name: 'login',
       component: () => import('../views/LoginView/LoginView.vue'),
     },
     {
-      path: '/',
+      path: '/scoring',
       name: 'scoring',
       component: () => import('../views/ScoringView/ScoringView.vue'),
       meta: { requiresAuth: true },
@@ -31,13 +31,13 @@ const router = createRouter({
 router.beforeEach((to, _from, next) => {
   const auth = useAuthStore()
   if (to.meta.requiresAuth && !auth.isLoggedIn) {
-    next('/login')
-  } else if (to.path === '/login' && auth.isLoggedIn) {
+    next('/')
+  } else if (to.path === '/' && auth.isLoggedIn) {
     /* 根据角色跳转到不同首页 */
     if (auth.isExporter) {
       next('/export')
     } else {
-      next('/')
+      next('/scoring')
     }
   } else {
     next()

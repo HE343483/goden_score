@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
@@ -13,12 +13,80 @@ const activeTab = ref('all')
 const exporting = ref(false)
 const lastExportTime = ref<string | null>(null)
 
-/* 所有数据 */
-const allData = computed(() => store.allPrograms)
+/* 翻页 */
+const page = ref(1)
+const pageSize = ref(20)
 
-/* 按筛选标签过滤 */
+/* 大类 / 报名类型 联动筛选 */
+const majorCategoryFilter = ref('')
+const subCategoryFilter = ref('')
+
+/* ═══ 分类体系（前端硬编码） ═══ */
+const CATEGORY_MAP: Record<string, string[]> = {
+  '艺术表演类（集体项目）': ['声乐作品报名', '器乐作品报名', '舞蹈作品报名', '戏剧（戏曲）作品报名', '朗诵作品报名'],
+  '艺术表演类（个人项目）': ['声乐作品报名', '器乐作品报名', '舞蹈作品报名', '戏曲作品报名', '朗诵作品报名'],
+  '学生艺术作品类':         ['绘画作品报名', '书法作品报名', '篆刻作品报名', '摄影作品报名', '设计作品报名', '影视作品报名'],
+  '高校校长作品类':         ['绘画作品报名', '书法作品报名', '篆刻作品报名', '摄影作品报名'],
+  '艺术实践工作坊':         ['艺术实践工作坊'],
+  '优秀成果申报':           ['优秀成果申报'],
+}
+
+const majorCategories = computed(() => Object.keys(CATEGORY_MAP))
+
+/* 当前大类下可选的报名类型列表 */
+const subCategoryOptions = computed(() => {
+  if (majorCategoryFilter.value) {
+    return CATEGORY_MAP[majorCategoryFilter.value] || []
+  }
+  return Array.from(new Set(Object.values(CATEGORY_MAP).flat()))
+})
+
+/* ═══ 临时：模拟数据的分类指派（后端 API 接入后可删除此映射） ═══ */
+const MOCK_CATEGORY: Record<string, { majorCategory: string; subCategory: string }> = {
+  'SCDYZ26B01XA': { majorCategory: '艺术表演类（集体项目）', subCategory: '声乐作品报名' },
+  'SCDYZ26B02XA': { majorCategory: '艺术表演类（集体项目）', subCategory: '声乐作品报名' },
+  'SCDYZ26B03XA': { majorCategory: '艺术表演类（集体项目）', subCategory: '舞蹈作品报名' },
+  'SCDYZ26C01XA': { majorCategory: '艺术表演类（集体项目）', subCategory: '器乐作品报名' },
+  'SCDYZ26C02XA': { majorCategory: '艺术表演类（集体项目）', subCategory: '戏剧（戏曲）作品报名' },
+  'SCDYZ26F01XA': { majorCategory: '艺术表演类（集体项目）', subCategory: '朗诵作品报名' },
+  'SCDYZ26B04XA': { majorCategory: '艺术表演类（个人项目）', subCategory: '声乐作品报名' },
+  'SCDYZ26C04XA': { majorCategory: '艺术表演类（个人项目）', subCategory: '器乐作品报名' },
+  'SCDYZ26B05XA': { majorCategory: '艺术表演类（个人项目）', subCategory: '舞蹈作品报名' },
+  'SCDYZ26C05XA': { majorCategory: '艺术表演类（个人项目）', subCategory: '戏曲作品报名' },
+  'SCDYZ26F02XA': { majorCategory: '艺术表演类（个人项目）', subCategory: '朗诵作品报名' },
+  'SCDYZ26D01XA': { majorCategory: '学生艺术作品类', subCategory: '绘画作品报名' },
+  'SCDYZ26D02XA': { majorCategory: '学生艺术作品类', subCategory: '绘画作品报名' },
+  'SCDYZ26E01XA': { majorCategory: '学生艺术作品类', subCategory: '书法作品报名' },
+  'SCDYZ26E02XA': { majorCategory: '学生艺术作品类', subCategory: '书法作品报名' },
+  'SCDYZ26E03XA': { majorCategory: '学生艺术作品类', subCategory: '篆刻作品报名' },
+  'SCDYZ26G01XA': { majorCategory: '学生艺术作品类', subCategory: '摄影作品报名' },
+  'SCDYZ26H01XA': { majorCategory: '学生艺术作品类', subCategory: '设计作品报名' },
+  'SCDYZ26H02XA': { majorCategory: '学生艺术作品类', subCategory: '影视作品报名' },
+  'SCDYZ26I01XA': { majorCategory: '高校校长作品类', subCategory: '绘画作品报名' },
+  'SCDYZ26I02XA': { majorCategory: '高校校长作品类', subCategory: '书法作品报名' },
+  'SCDYZ26I03XA': { majorCategory: '高校校长作品类', subCategory: '篆刻作品报名' },
+  'SCDYZ26J01XA': { majorCategory: '艺术实践工作坊', subCategory: '艺术实践工作坊' },
+  'SCDYZ26J02XA': { majorCategory: '艺术实践工作坊', subCategory: '艺术实践工作坊' },
+  'SCDYZ26K01XA': { majorCategory: '优秀成果申报', subCategory: '优秀成果申报' },
+}
+
+/* 所有数据（合并分类信息） */
+const allData = computed(() => {
+  return store.allPrograms.map(p => ({
+    ...p,
+    ...(MOCK_CATEGORY[p.code] ?? { majorCategory: '', subCategory: '' }),
+  }))
+})
+
+/* 按大类 + 报名类型 + 状态标签过滤 */
 const filteredData = computed(() => {
-  const list = allData.value
+  let list = allData.value
+  if (majorCategoryFilter.value) {
+    list = list.filter(d => d.majorCategory === majorCategoryFilter.value)
+  }
+  if (subCategoryFilter.value) {
+    list = list.filter(d => d.subCategory === subCategoryFilter.value)
+  }
   switch (activeTab.value) {
     case 'scored':    return list.filter(d => d.status >= 1)
     case 'submitted': return list.filter(d => d.status === 2)
@@ -36,6 +104,20 @@ const stats = computed(() => {
     submitted: list.filter(d => d.status === 2).length,
     abandoned: list.filter(d => d.status === -2).length,
   }
+})
+
+/* 当前页数据（分片） */
+const paginatedData = computed(() => {
+  const start = (page.value - 1) * pageSize.value
+  return filteredData.value.slice(start, start + pageSize.value)
+})
+
+/* 分页总条数 = 过滤后总数 */
+const pageTotal = computed(() => filteredData.value.length)
+
+/* 筛选条件变化时自动回到第一页 */
+watch([activeTab, majorCategoryFilter, subCategoryFilter], () => {
+  page.value = 1
 })
 
 function getStatusText(status: number): string {
@@ -60,18 +142,38 @@ function exportCSV() {
   /* 短延迟让动画播放 */
   setTimeout(() => {
     const BOM = '﻿'
-    const headers = ['项目编码', '项目名称', '大类', '类别', '组别', '形式', '分数', '状态']
-    const rows = filteredData.value.map(d => [
-      d.code,
-      `"${d.name}"`,
-      d.majorCategory,
-      d.subCategory,
-      d.group,
-      d.teamType,
-      formatScore(d.score),
-      getStatusText(d.status),
-    ])
-    const csv = BOM + headers.join(',') + '\n' + rows.map(r => r.join(',')).join('\n')
+    const headers = ['项目编码', '项目名称', '学校', '大类', '报名类型', '组别', '形式', '分数', '奖项', '状态']
+
+    /* 按大类分组，每组内再按报名类型分组 */
+    const groups = new Map<string, typeof filteredData.value>()
+    for (const d of filteredData.value) {
+      const key = `${d.majorCategory}|${d.subCategory}`
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key)!.push(d)
+    }
+
+    const lines: string[] = [BOM + headers.join(',')]
+    for (const [, items] of groups) {
+      if (!items.length) continue
+      /* 分组标题行 */
+      const first = items[0]
+      lines.push(`\n【${first.majorCategory} · ${first.subCategory}】`)
+      for (const d of items) {
+        lines.push([
+          d.code,
+          `"${d.name}"`,
+          `"${d.school}"`,
+          `"${d.majorCategory}"`,
+          d.subCategory,
+          d.group,
+          d.teamType,
+          formatScore(d.score),
+          d.award || '',
+          getStatusText(d.status),
+        ].join(','))
+      }
+    }
+    const csv = lines.join('\n')
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
@@ -91,7 +193,7 @@ function exportCSV() {
 
 function logout() {
   auth.logout()
-  router.push('/login')
+  router.push('/')
 }
 </script>
 
@@ -152,7 +254,7 @@ function logout() {
 
       <!-- 表格卡片 -->
       <div class="table-card">
-        <!-- 标题行 + 筛选 + 导出 -->
+        <!-- 标题行 + 导出 -->
         <div class="table-toolbar">
           <div class="table-toolbar-left">
             <h2 class="section-title">评分列表</h2>
@@ -193,6 +295,34 @@ function logout() {
           </div>
         </div>
 
+        <!-- 大类选单（pill 样式） -->
+        <div class="filter-pills filter-pills--category">
+          <button
+            :class="['pill', majorCategoryFilter === '' && 'pill--active']"
+            @click="majorCategoryFilter = ''; subCategoryFilter = ''"
+          >全部大类</button>
+          <button
+            v-for="cat in majorCategories"
+            :key="cat"
+            :class="['pill', majorCategoryFilter === cat && 'pill--active']"
+            @click="majorCategoryFilter = cat; subCategoryFilter = ''"
+          >{{ cat }}</button>
+        </div>
+
+        <!-- 报名类型选单（随大类联动） -->
+        <div class="filter-pills filter-pills--subcategory">
+          <button
+            :class="['pill', subCategoryFilter === '' && 'pill--active']"
+            @click="subCategoryFilter = ''"
+          >全部报名类型</button>
+          <button
+            v-for="sub in subCategoryOptions"
+            :key="sub"
+            :class="['pill', subCategoryFilter === sub && 'pill--active']"
+            @click="subCategoryFilter = sub"
+          >{{ sub }}</button>
+        </div>
+
         <!-- 导出时间戳 -->
         <div v-if="lastExportTime" class="export-meta">
           上次导出：{{ lastExportTime }}
@@ -200,7 +330,7 @@ function logout() {
 
         <!-- 表格 -->
         <el-table
-          :data="filteredData"
+          :data="paginatedData"
           border
           size="small"
           style="width:100%"
@@ -220,7 +350,7 @@ function logout() {
             </template>
           </el-table-column>
 
-          <el-table-column prop="subCategory" label="类别" width="100" align="center" header-align="center" />
+          <el-table-column prop="subCategory" label="报名类型" width="120" align="center" header-align="center" />
 
           <el-table-column prop="group" label="组别" width="60" align="center" header-align="center" />
 
@@ -231,6 +361,14 @@ function logout() {
               <span :class="['score-cell', row.status === 2 ? 'score-cell--final' : '', row.status === 1 ? 'score-cell--draft' : '']">
                 {{ formatScore(row.score) }}
               </span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="school" label="学校" width="130" align="center" header-align="center" />
+
+          <el-table-column label="奖项" width="90" align="center" header-align="center">
+            <template #default="{ row }">
+              <span v-if="row.award" class="award-cell">{{ row.award }}</span>
+              <span v-else class="award-cell award-cell--empty">—</span>
             </template>
           </el-table-column>
 
@@ -247,11 +385,23 @@ function logout() {
         <!-- 表格底部摘要 -->
         <div class="table-footer">
           <span class="table-footer-text">
-            共 {{ filteredData.length }} 项
+            共 {{ pageTotal }} 项
             <template v-if="activeTab === 'all'">
               · 已评分 {{ stats.scored }} · 已提交 {{ stats.submitted }} · 弃赛 {{ stats.abandoned }}
             </template>
           </span>
+        </div>
+
+        <!-- 分页 -->
+        <div class="pagination-wrap">
+          <el-pagination
+            v-model:current-page="page"
+            v-model:page-size="pageSize"
+            :page-sizes="[20, 50, 100]"
+            :total="pageTotal"
+            layout="total, sizes, prev, pager, next"
+            small
+          />
         </div>
       </div>
     </div>
@@ -496,6 +646,21 @@ function logout() {
   flex-wrap: wrap;
 }
 
+/* 大类 / 报名类型 筛选行（pill 样式） */
+.filter-pills--category {
+  margin-bottom: 8px;
+}
+
+.filter-pills--subcategory {
+  margin-bottom: 14px;
+}
+
+.filter-pills--category .pill,
+.filter-pills--subcategory .pill {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 /* 筛选药丸按钮 */
 .filter-pills {
   display: flex;
@@ -616,6 +781,20 @@ function logout() {
   color: #3A7AB5;
 }
 
+/* 奖项单元格 */
+.award-cell {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-gold);
+  letter-spacing: 0.5px;
+}
+
+.award-cell--empty {
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
 /* 状态标签 */
 .status-badge {
   display: inline-flex;
@@ -664,6 +843,20 @@ function logout() {
   letter-spacing: 0.3px;
 }
 
+/* 分页容器 */
+.pagination-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0 12px;
+  border-top: 1px solid var(--color-border-light);
+  margin-top: 4px;
+}
+
+.pagination-wrap :deep(.el-pagination__total) {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
 /* ═══ 页脚 ═══ */
 .app-footer {
   flex-shrink: 0;
@@ -697,6 +890,8 @@ function logout() {
 
   .table-card { padding: 16px 14px 0; border-radius: var(--radius-md); }
   .table-toolbar { flex-direction: column; align-items: flex-start; }
+  .filter-pills--category { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+  .filter-pills--subcategory { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
   .table-toolbar-right { width: 100%; }
   .filter-pills { flex: 1; }
   .pill { flex: 1; text-align: center; }

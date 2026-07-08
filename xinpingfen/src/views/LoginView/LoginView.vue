@@ -17,7 +17,7 @@ const rules = {
 
 function doLogin(username: string, password: string) {
   if (auth.login(username, password)) {
-    const path = auth.isExporter ? '/export' : '/'
+    const path = auth.isExporter ? '/export' : '/scoring'
     router.push(path)
   } else {
     ElMessage.error('账号或密码错误，请重试')
@@ -74,14 +74,14 @@ function submit() {
         <el-form-item prop="username">
           <el-input
             v-model="form.username"
-            placeholder="账号"
+            placeholder="请输入账号"
             size="large"
           />
         </el-form-item>
         <el-form-item prop="password">
           <el-input
             v-model="form.password"
-            placeholder="密码"
+            placeholder="请输入密码"
             type="password"
             size="large"
             show-password

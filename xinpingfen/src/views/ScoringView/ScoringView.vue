@@ -145,7 +145,7 @@ function onSelectionChange(selection: ProgramWithScore[]) {
 
 function logout() {
   auth.logout()
-  router.push('/login')
+  router.push('/')
 }
 
 function formatScore(score: number | null): string {
