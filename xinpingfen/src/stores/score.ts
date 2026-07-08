@@ -13,6 +13,8 @@ export interface ProgramWithScore extends Program {
   status: number  /* 0=未评 1=已评 2=已提交 -2=弃赛 -3=同校回避 */
   score: number | null
   award: string | null
+  majorCategory: string
+  subCategory: string
 }
 
 export interface ScoreState {
@@ -112,15 +114,30 @@ function buildDefaultMap(): Record<string, ScoreState> {
 export const useScoreStore = defineStore('score', () => {
   const scoreMap = ref<Record<string, ScoreState>>(buildDefaultMap())
   const keyword = ref('')
+  const school = ref('')
   const filterStatus = ref<number | null>(null)
   const selectedCodes = ref<string[]>([])
   const editingScores = ref<Record<string, number>>({})
+
+  /* 从 name 中分离大类和小类 */
+  function parseCategory(name: string): { majorCategory: string; subCategory: string } {
+    const idx = name.indexOf(' / ')
+    if (idx !== -1) {
+      return {
+        majorCategory: name.slice(0, idx),
+        subCategory: name.slice(idx + 3),
+      }
+    }
+    /* 无斜杠分隔的项（如工作坊、案例等） */
+    return { majorCategory: name, subCategory: '—' }
+  }
 
   /* 所有项目（合并分数状态） */
   const allPrograms = computed<ProgramWithScore[]>(() => {
     return MOCK_PROGRAMS.map(p => {
       const s = scoreMap.value[p.code] || { status: 0, score: null, award: null }
-      return { ...p, ...s }
+      const { majorCategory, subCategory } = parseCategory(p.name)
+      return { ...p, ...s, majorCategory, subCategory }
     })
   })
 
@@ -130,6 +147,9 @@ export const useScoreStore = defineStore('score', () => {
     if (keyword.value) {
       const kw = keyword.value
       list = list.filter(d => d.name.includes(kw) || d.code.includes(kw.toUpperCase()))
+    }
+    if (school.value) {
+      list = list.filter(d => d.school.includes(school.value))
     }
     if (filterStatus.value !== null) {
       list = list.filter(d => d.status === filterStatus.value)
@@ -145,6 +165,12 @@ export const useScoreStore = defineStore('score', () => {
 
   /* 标记弃赛 */
   function markAbandoned(code: string) {
+    scoreMap.value[code] = { status: -2, score: null, award: null }
+    saveScoreMap(scoreMap.value)
+  }
+
+  /* 标记同校弃赛 */
+  function markSameSchoolAvoid(code: string) {
     scoreMap.value[code] = { status: -2, score: null, award: null }
     saveScoreMap(scoreMap.value)
   }
@@ -177,8 +203,8 @@ export const useScoreStore = defineStore('score', () => {
   }
 
   return {
-    scoreMap, keyword, filterStatus, selectedCodes, editingScores,
+    scoreMap, keyword, school, filterStatus, selectedCodes, editingScores,
     allPrograms, filteredPrograms,
-    submitScore, markAbandoned, requestRescore, submitToFinal, batchSubmit,
+    submitScore, markAbandoned, markSameSchoolAvoid, requestRescore, submitToFinal, batchSubmit,
   }
 })

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
-import { useScoreStore } from '@/stores/score'
+import { useScoreStore, type ProgramWithScore } from '@/stores/score'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -13,72 +13,86 @@ const activeTab = ref('all')
 const exporting = ref(false)
 const lastExportTime = ref<string | null>(null)
 
-/* 翻页 */
-const page = ref(1)
-const pageSize = ref(20)
-
 /* 大类 / 报名类型 联动筛选 */
 const majorCategoryFilter = ref('')
 const subCategoryFilter = ref('')
 
-/* ═══ 分类体系（前端硬编码） ═══ */
-const CATEGORY_MAP: Record<string, string[]> = {
-  '艺术表演类（集体项目）': ['声乐作品报名', '器乐作品报名', '舞蹈作品报名', '戏剧（戏曲）作品报名', '朗诵作品报名'],
-  '艺术表演类（个人项目）': ['声乐作品报名', '器乐作品报名', '舞蹈作品报名', '戏曲作品报名', '朗诵作品报名'],
-  '学生艺术作品类':         ['绘画作品报名', '书法作品报名', '篆刻作品报名', '摄影作品报名', '设计作品报名', '影视作品报名'],
-  '高校校长作品类':         ['绘画作品报名', '书法作品报名', '篆刻作品报名', '摄影作品报名'],
-  '艺术实践工作坊':         ['艺术实践工作坊'],
-  '优秀成果申报':           ['优秀成果申报'],
+/* ── 静态分类筛选面板 ── */
+interface CatLeaf {
+  label: string
+  keyword: string
 }
-
-const majorCategories = computed(() => Object.keys(CATEGORY_MAP))
-
-/* 当前大类下可选的报名类型列表 */
-const subCategoryOptions = computed(() => {
-  if (majorCategoryFilter.value) {
-    return CATEGORY_MAP[majorCategoryFilter.value] || []
-  }
-  return Array.from(new Set(Object.values(CATEGORY_MAP).flat()))
-})
-
-/* ═══ 临时：模拟数据的分类指派（后端 API 接入后可删除此映射） ═══ */
-const MOCK_CATEGORY: Record<string, { majorCategory: string; subCategory: string }> = {
-  'SCDYZ26B01XA': { majorCategory: '艺术表演类（集体项目）', subCategory: '声乐作品报名' },
-  'SCDYZ26B02XA': { majorCategory: '艺术表演类（集体项目）', subCategory: '声乐作品报名' },
-  'SCDYZ26B03XA': { majorCategory: '艺术表演类（集体项目）', subCategory: '舞蹈作品报名' },
-  'SCDYZ26C01XA': { majorCategory: '艺术表演类（集体项目）', subCategory: '器乐作品报名' },
-  'SCDYZ26C02XA': { majorCategory: '艺术表演类（集体项目）', subCategory: '戏剧（戏曲）作品报名' },
-  'SCDYZ26F01XA': { majorCategory: '艺术表演类（集体项目）', subCategory: '朗诵作品报名' },
-  'SCDYZ26B04XA': { majorCategory: '艺术表演类（个人项目）', subCategory: '声乐作品报名' },
-  'SCDYZ26C04XA': { majorCategory: '艺术表演类（个人项目）', subCategory: '器乐作品报名' },
-  'SCDYZ26B05XA': { majorCategory: '艺术表演类（个人项目）', subCategory: '舞蹈作品报名' },
-  'SCDYZ26C05XA': { majorCategory: '艺术表演类（个人项目）', subCategory: '戏曲作品报名' },
-  'SCDYZ26F02XA': { majorCategory: '艺术表演类（个人项目）', subCategory: '朗诵作品报名' },
-  'SCDYZ26D01XA': { majorCategory: '学生艺术作品类', subCategory: '绘画作品报名' },
-  'SCDYZ26D02XA': { majorCategory: '学生艺术作品类', subCategory: '绘画作品报名' },
-  'SCDYZ26E01XA': { majorCategory: '学生艺术作品类', subCategory: '书法作品报名' },
-  'SCDYZ26E02XA': { majorCategory: '学生艺术作品类', subCategory: '书法作品报名' },
-  'SCDYZ26E03XA': { majorCategory: '学生艺术作品类', subCategory: '篆刻作品报名' },
-  'SCDYZ26G01XA': { majorCategory: '学生艺术作品类', subCategory: '摄影作品报名' },
-  'SCDYZ26H01XA': { majorCategory: '学生艺术作品类', subCategory: '设计作品报名' },
-  'SCDYZ26H02XA': { majorCategory: '学生艺术作品类', subCategory: '影视作品报名' },
-  'SCDYZ26I01XA': { majorCategory: '高校校长作品类', subCategory: '绘画作品报名' },
-  'SCDYZ26I02XA': { majorCategory: '高校校长作品类', subCategory: '书法作品报名' },
-  'SCDYZ26I03XA': { majorCategory: '高校校长作品类', subCategory: '篆刻作品报名' },
-  'SCDYZ26J01XA': { majorCategory: '艺术实践工作坊', subCategory: '艺术实践工作坊' },
-  'SCDYZ26J02XA': { majorCategory: '艺术实践工作坊', subCategory: '艺术实践工作坊' },
-  'SCDYZ26K01XA': { majorCategory: '优秀成果申报', subCategory: '优秀成果申报' },
+interface CatGroup {
+  label: string
+  teamType?: string        /* 集体 / 个人 */
+  children: CatLeaf[]
 }
+const CATEGORY_TREE: CatGroup[] = [
+  {
+    label: '艺术表演类（集体项目）',
+    teamType: '集体',
+    children: [
+      { label: '声乐作品报名', keyword: '声乐' },
+      { label: '器乐作品报名', keyword: '器乐' },
+      { label: '舞蹈作品报名', keyword: '舞蹈' },
+      { label: '戏剧（戏曲）作品报名', keyword: '戏剧' },
+      { label: '朗诵作品报名', keyword: '朗诵' },
+    ],
+  },
+  {
+    label: '艺术表演类（个人项目）',
+    teamType: '个人',
+    children: [
+      { label: '声乐作品报名', keyword: '声乐' },
+      { label: '器乐作品报名', keyword: '器乐' },
+      { label: '舞蹈作品报名', keyword: '舞蹈' },
+      { label: '戏曲作品报名', keyword: '戏曲' },
+      { label: '朗诵作品报名', keyword: '朗诵' },
+    ],
+  },
+  {
+    label: '学生艺术作品类',
+    children: [
+      { label: '绘画作品报名', keyword: '绘画' },
+      { label: '书法作品报名', keyword: '书法' },
+      { label: '篆刻作品报名', keyword: '篆刻' },
+      { label: '摄影作品报名', keyword: '摄影' },
+      { label: '设计作品报名', keyword: '设计' },
+      { label: '影视作品报名', keyword: '影视' },
+    ],
+  },
+  {
+    label: '高校校长作品类',
+    children: [
+      { label: '绘画作品报名', keyword: '绘画' },
+      { label: '书法作品报名', keyword: '书法' },
+      { label: '篆刻作品报名', keyword: '篆刻' },
+      { label: '摄影作品报名', keyword: '摄影' },
+    ],
+  },
+  {
+    label: '艺术实践工作坊',
+    children: [
+      { label: '艺术实践工作坊', keyword: '工作坊' },
+    ],
+  },
+  {
+    label: '优秀成果申报',
+    children: [
+      { label: '优秀成果申报', keyword: '美育改革创新' },
+    ],
+  },
+]
 
-/* 所有数据（合并分类信息） */
-const allData = computed(() => {
-  return store.allPrograms.map(p => ({
-    ...p,
-    ...(MOCK_CATEGORY[p.code] ?? { majorCategory: '', subCategory: '' }),
-  }))
-})
+const expandedGroup = ref('')          /* 当前展开的分组 */
+const catKeyword = ref('')            /* 分类关键词筛选 */
+const catTeamType = ref('')          /* 集体/个人筛选 */
+const catActiveLabel = ref('')       /* 当前选中的选项文字（用于高亮） */
 
-/* 按大类 + 报名类型 + 状态标签过滤 */
+/* 所有数据 */
+const allData = computed(() => store.allPrograms)
+
+/* 按大类 + 报名类型 + 状态标签 + 分类面板 过滤 */
 const filteredData = computed(() => {
   let list = allData.value
   if (majorCategoryFilter.value) {
@@ -86,6 +100,13 @@ const filteredData = computed(() => {
   }
   if (subCategoryFilter.value) {
     list = list.filter(d => d.subCategory === subCategoryFilter.value)
+  }
+  /* 分类面板筛选 */
+  if (catKeyword.value) {
+    list = list.filter(d => d.name.includes(catKeyword.value))
+  }
+  if (catTeamType.value) {
+    list = list.filter(d => d.teamType === catTeamType.value)
   }
   switch (activeTab.value) {
     case 'scored':    return list.filter(d => d.status >= 1)
@@ -106,20 +127,6 @@ const stats = computed(() => {
   }
 })
 
-/* 当前页数据（分片） */
-const paginatedData = computed(() => {
-  const start = (page.value - 1) * pageSize.value
-  return filteredData.value.slice(start, start + pageSize.value)
-})
-
-/* 分页总条数 = 过滤后总数 */
-const pageTotal = computed(() => filteredData.value.length)
-
-/* 筛选条件变化时自动回到第一页 */
-watch([activeTab, majorCategoryFilter, subCategoryFilter], () => {
-  page.value = 1
-})
-
 function getStatusText(status: number): string {
   switch (status) {
     case 0:   return '未评分'
@@ -127,7 +134,6 @@ function getStatusText(status: number): string {
     case 2:   return '已提交'
     case -1:  return '无需评分'
     case -2:  return '弃赛'
-    case -3:  return '回避'
     default:  return '—'
   }
 }
@@ -154,7 +160,6 @@ function exportCSV() {
 
     const lines: string[] = [BOM + headers.join(',')]
     for (const [, items] of groups) {
-      if (!items.length) continue
       /* 分组标题行 */
       const first = items[0]
       lines.push(`\n【${first.majorCategory} · ${first.subCategory}】`)
@@ -191,9 +196,80 @@ function exportCSV() {
   }, 300)
 }
 
+/* ── 分类面板交互 ── */
+function toggleGroup(label: string) {
+  expandedGroup.value = expandedGroup.value === label ? '' : label
+}
+
+function selectCatGroup(group: CatGroup) {
+  /* 点击分组标题：切换到按 teamType 筛选 */
+  if (catActiveLabel.value === group.label) {
+    /* 再次点击取消 */
+    clearCatFilter()
+    return
+  }
+  catKeyword.value = ''
+  catTeamType.value = group.teamType || ''
+  catActiveLabel.value = group.label
+  expandedGroup.value = group.label
+}
+
+function selectCatLeaf(group: CatGroup, leaf: CatLeaf) {
+  catKeyword.value = leaf.keyword
+  catTeamType.value = group.teamType || ''
+  catActiveLabel.value = `${group.label}›${leaf.label}`
+  expandedGroup.value = group.label
+}
+
+function clearCatFilter() {
+  catKeyword.value = ''
+  catTeamType.value = ''
+  catActiveLabel.value = ''
+  expandedGroup.value = ''
+}
+
+function refresh() {
+  /* 搜索功能 — 响应式数据已自动触发 filteredData */
+}
+
+function getCatGroupCount(group: CatGroup): number {
+  return allData.value.filter(d => {
+    if (group.teamType && d.teamType !== group.teamType) return false
+    return group.children.some(c => d.name.includes(c.keyword))
+  }).length
+}
+
+function getCatLeafCount(leaf: CatLeaf): number {
+  return allData.value.filter(d => d.name.includes(leaf.keyword)).length
+}
+
+function handleEdit(row: ProgramWithScore) {
+  ElMessage.info(`查看项目：${row.code} ${row.name}`)
+}
+
+function handleDelete(row: ProgramWithScore) {
+  if (row.status === -2) {
+    store.requestRescore(row.code)
+    ElMessage.success(`${row.code} 已恢复`)
+  } else {
+    store.markAbandoned(row.code)
+    ElMessage.warning(`${row.code} 已标记为弃赛`)
+  }
+}
+
+function handleSameSchool(row: ProgramWithScore) {
+  if (row.status === -3) {
+    store.requestRescore(row.code)
+    ElMessage.success(`${row.code} 已恢复`)
+  } else {
+    store.markSameSchoolAvoid(row.code)
+    ElMessage.warning(`${row.code} 已标记为同校弃赛`)
+  }
+}
+
 function logout() {
   auth.logout()
-  router.push('/')
+  router.push('/login')
 }
 </script>
 
@@ -211,7 +287,7 @@ function logout() {
         </div>
       </div>
       <div class="header-right">
-        <span class="header-role">导出员</span>
+        <span class="header-role">管理人员</span>
         <span class="header-divider">|</span>
         <span class="header-user">{{ auth.userName }}</span>
         <button class="logout-btn" @click="logout">退出</button>
@@ -251,10 +327,42 @@ function logout() {
           </div>
         </div>
       </div>
-
+      <div class="search-area">
+        <el-form label-width="100px">
+          <el-row>
+            <el-col :span="6">
+          <el-form-item label="项目编码" prop="keyword">
+            <div class="toolbar-search">
+            <el-input
+              v-model="store.keyword"
+              placeholder="搜索项目名称或编码"
+              clearable
+              class="search-input"
+            />
+          </div>
+          </el-form-item>
+          </el-col>
+          <el-col :span="6">
+          <el-form-item label="学校" prop="school">
+          <div class="toolbar-search">
+            <el-input
+              v-model="store.school"
+              placeholder="搜索学校名称"
+              clearable
+              class="search-input"
+            />
+          </div>
+          </el-form-item>
+          </el-col>
+          <el-form-item>
+            <el-button type="primary" @click="refresh" style="margin-left: 40px;">搜索</el-button>
+          </el-form-item>
+          </el-row>
+        </el-form>
+      </div>
       <!-- 表格卡片 -->
       <div class="table-card">
-        <!-- 标题行 + 导出 -->
+        <!-- 标题行 + 筛选 + 导出 -->
         <div class="table-toolbar">
           <div class="table-toolbar-left">
             <h2 class="section-title">评分列表</h2>
@@ -295,42 +403,60 @@ function logout() {
           </div>
         </div>
 
-        <!-- 大类选单（pill 样式） -->
-        <div class="filter-pills filter-pills--category">
-          <button
-            :class="['pill', majorCategoryFilter === '' && 'pill--active']"
-            @click="majorCategoryFilter = ''; subCategoryFilter = ''"
-          >全部大类</button>
-          <button
-            v-for="cat in majorCategories"
-            :key="cat"
-            :class="['pill', majorCategoryFilter === cat && 'pill--active']"
-            @click="majorCategoryFilter = cat; subCategoryFilter = ''"
-          >{{ cat }}</button>
-        </div>
+        <!-- ═══ 分类筛选面板 ═══ -->
+        <div class="category-filter">
+          <div class="category-filter__header">
+            <span class="category-filter__title">大小类区分</span>
+            <span v-if="catActiveLabel" class="category-filter__clear" @click="clearCatFilter">清除筛选</span>
+          </div>
+          <div class="category-filter__body">
+            <!-- 全部 -->
+            <div
+              :class="['cat-item', 'cat-item--all', { 'cat-item--active': !catActiveLabel }]"
+              @click="clearCatFilter"
+            >
+              <span class="cat-item__name">全部</span>
+              <span class="cat-item__count">{{ allData.length }}</span>
+            </div>
 
-        <!-- 报名类型选单（随大类联动） -->
-        <div class="filter-pills filter-pills--subcategory">
-          <button
-            :class="['pill', subCategoryFilter === '' && 'pill--active']"
-            @click="subCategoryFilter = ''"
-          >全部报名类型</button>
-          <button
-            v-for="sub in subCategoryOptions"
-            :key="sub"
-            :class="['pill', subCategoryFilter === sub && 'pill--active']"
-            @click="subCategoryFilter = sub"
-          >{{ sub }}</button>
-        </div>
+            <!-- 遍历分组 -->
+            <template v-for="group in CATEGORY_TREE" :key="group.label">
+              <!-- 分组标题行 -->
+              <div
+                :class="['cat-item', 'cat-item--group', {
+                  'cat-item--active': catActiveLabel === group.label,
+                  'cat-item--expanded': expandedGroup === group.label,
+                }]"
+                @click="selectCatGroup(group)"
+              >
+                <span class="cat-item__arrow" @click.stop="toggleGroup(group.label)">
+                  {{ expandedGroup === group.label ? '▾' : '▸' }}
+                </span>
+                <span class="cat-item__name">{{ group.label }}</span>
+                <span class="cat-item__count">{{ getCatGroupCount(group) }}</span>
+              </div>
 
-        <!-- 导出时间戳 -->
-        <div v-if="lastExportTime" class="export-meta">
-          上次导出：{{ lastExportTime }}
+              <!-- 子选项（展开时） -->
+              <div v-if="expandedGroup === group.label" class="cat-subs">
+                <div
+                  v-for="leaf in group.children"
+                  :key="leaf.label"
+                  :class="['cat-sub', {
+                    'cat-sub--active': catActiveLabel === `${group.label}›${leaf.label}`
+                  }]"
+                  @click="selectCatLeaf(group, leaf)"
+                >
+                  <span class="cat-sub__name">{{ leaf.label }}</span>
+                  <span class="cat-sub__count">{{ getCatLeafCount(leaf) }}</span>
+                </div>
+              </div>
+            </template>
+          </div>
         </div>
 
         <!-- 表格 -->
         <el-table
-          :data="paginatedData"
+          :data="filteredData"
           border
           size="small"
           style="width:100%"
@@ -350,7 +476,7 @@ function logout() {
             </template>
           </el-table-column>
 
-          <el-table-column prop="subCategory" label="报名类型" width="120" align="center" header-align="center" />
+          <el-table-column prop="subCategory" label="类别" width="100" align="center" header-align="center" />
 
           <el-table-column prop="group" label="组别" width="60" align="center" header-align="center" />
 
@@ -363,15 +489,8 @@ function logout() {
               </span>
             </template>
           </el-table-column>
-          <el-table-column prop="school" label="学校" width="130" align="center" header-align="center" />
-
-          <el-table-column label="奖项" width="90" align="center" header-align="center">
-            <template #default="{ row }">
-              <span v-if="row.award" class="award-cell">{{ row.award }}</span>
-              <span v-else class="award-cell award-cell--empty">—</span>
-            </template>
-          </el-table-column>
-
+          <el-table-column prop="school" label="学校" width="100" align="center" header-align="center" />
+          <el-table-column prop="award" label="奖项" width="100" align="center" header-align="center" />
           <el-table-column label="状态" width="100" align="center" header-align="center">
             <template #default="{ row }">
               <span :class="['status-badge', `status-badge--${row.status}`]">
@@ -380,28 +499,27 @@ function logout() {
               </span>
             </template>
           </el-table-column>
+          <el-table-column label="操作" width="200" align="center" header-align="center" fixed="right">
+            <template #default="{ row }">
+              <el-button type="primary" size="small" link @click="handleEdit(row)">查看</el-button>
+              <el-button type="danger" size="small" link @click="handleDelete(row)">
+                {{ row.status === -2 ? '恢复' : '弃赛' }}
+              </el-button>
+              <el-button type="warning" size="small" link @click="handleSameSchool(row)">
+                {{ row.status === -3 ? '同校恢复' : '同校弃赛' }}
+              </el-button>
+            </template>
+          </el-table-column>
         </el-table>
 
         <!-- 表格底部摘要 -->
         <div class="table-footer">
           <span class="table-footer-text">
-            共 {{ pageTotal }} 项
+            共 {{ filteredData.length }} 项
             <template v-if="activeTab === 'all'">
               · 已评分 {{ stats.scored }} · 已提交 {{ stats.submitted }} · 弃赛 {{ stats.abandoned }}
             </template>
           </span>
-        </div>
-
-        <!-- 分页 -->
-        <div class="pagination-wrap">
-          <el-pagination
-            v-model:current-page="page"
-            v-model:page-size="pageSize"
-            :page-sizes="[20, 50, 100]"
-            :total="pageTotal"
-            layout="total, sizes, prev, pager, next"
-            small
-          />
         </div>
       </div>
     </div>
@@ -544,7 +662,21 @@ function logout() {
   position: relative;
   z-index: 1;
 }
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
 
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 /* ═══ 统计卡片网格 ═══ */
 .stats-grid {
   display: grid;
@@ -609,7 +741,20 @@ function logout() {
   border: 1px solid var(--color-border-light);
   box-shadow: var(--shadow-sm);
 }
-
+.search-area {
+  background-color: #fff;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+.toolbar-search {
+  flex-shrink: 0;
+  width: 220px;
+}
+.search-input {
+  width: 100%;
+}
 /* 工具栏 */
 .table-toolbar {
   display: flex;
@@ -644,21 +789,6 @@ function logout() {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-}
-
-/* 大类 / 报名类型 筛选行（pill 样式） */
-.filter-pills--category {
-  margin-bottom: 8px;
-}
-
-.filter-pills--subcategory {
-  margin-bottom: 14px;
-}
-
-.filter-pills--category .pill,
-.filter-pills--subcategory .pill {
-  font-size: 12px;
-  white-space: nowrap;
 }
 
 /* 筛选药丸按钮 */
@@ -781,20 +911,6 @@ function logout() {
   color: #3A7AB5;
 }
 
-/* 奖项单元格 */
-.award-cell {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-gold);
-  letter-spacing: 0.5px;
-}
-
-.award-cell--empty {
-  color: var(--color-text-muted);
-  font-weight: 400;
-}
-
 /* 状态标签 */
 .status-badge {
   display: inline-flex;
@@ -843,18 +959,176 @@ function logout() {
   letter-spacing: 0.3px;
 }
 
-/* 分页容器 */
-.pagination-wrap {
-  display: flex;
-  justify-content: center;
-  padding: 16px 0 12px;
-  border-top: 1px solid var(--color-border-light);
-  margin-top: 4px;
+/* ═══ 分类筛选面板 ═══ */
+.category-filter {
+  margin-bottom: 14px;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  background: var(--color-card);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
 }
 
-.pagination-wrap :deep(.el-pagination__total) {
+.category-filter__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: var(--color-bg-subtle);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.category-filter__title {
   font-size: 12px;
+  font-weight: 600;
   color: var(--color-text-muted);
+  letter-spacing: 1px;
+}
+
+.category-filter__clear {
+  font-size: 12px;
+  color: var(--color-accent);
+  cursor: pointer;
+  letter-spacing: 0.3px;
+  transition: opacity 0.2s;
+}
+
+.category-filter__clear:hover {
+  opacity: 0.7;
+}
+
+.category-filter__body {
+  padding: 4px 0;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* ── 所有项共用 ── */
+.cat-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  gap: 8px;
+  user-select: none;
+  min-height: 32px;
+}
+
+.cat-item:hover {
+  background: var(--color-accent-light);
+}
+
+.cat-item--active {
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.cat-item__arrow {
+  width: 16px;
+  text-align: center;
+  font-size: 10px;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.cat-item__name {
+  flex: 1;
+  font-size: 13px;
+  letter-spacing: 0.3px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cat-item__count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  background: var(--color-bg-subtle);
+  padding: 1px 8px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  min-width: 26px;
+  text-align: center;
+}
+
+.cat-item--active .cat-item__count {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+/* ── 全部行 ── */
+.cat-item--all {
+  border-bottom: 1px solid var(--color-border-light);
+  margin-bottom: 2px;
+}
+
+.cat-item--all.cat-item--active {
+  color: var(--color-text);
+}
+
+.cat-item--all.cat-item--active .cat-item__count {
+  background: var(--color-text);
+  color: #fff;
+}
+
+/* ── 子选项 ── */
+.cat-subs {
+  background: var(--color-bg);
+  border-top: 1px solid var(--color-border-light);
+  border-bottom: 1px solid var(--color-border-light);
+  animation: slide-down 0.2s ease;
+}
+
+.cat-sub {
+  display: flex;
+  align-items: center;
+  padding: 5px 14px 5px 36px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  gap: 8px;
+  user-select: none;
+  min-height: 28px;
+}
+
+.cat-sub:hover {
+  background: var(--color-accent-light);
+}
+
+.cat-sub--active {
+  color: var(--color-accent);
+  font-weight: 600;
+  background: var(--color-accent-light);
+}
+
+.cat-sub__name {
+  flex: 1;
+  font-size: 12.5px;
+  letter-spacing: 0.3px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cat-sub__count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  background: var(--color-card);
+  padding: 1px 8px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  min-width: 26px;
+  text-align: center;
+}
+
+.cat-sub--active .cat-sub__count {
+  background: var(--color-accent);
+  color: #fff;
 }
 
 /* ═══ 页脚 ═══ */
@@ -874,6 +1148,12 @@ function logout() {
   letter-spacing: 1px;
 }
 
+/* ═══ 展开动画 ═══ */
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* ═══ 响应式 ═══ */
 @media (max-width: 1024px) {
   .export-body { padding: 20px; }
@@ -890,8 +1170,6 @@ function logout() {
 
   .table-card { padding: 16px 14px 0; border-radius: var(--radius-md); }
   .table-toolbar { flex-direction: column; align-items: flex-start; }
-  .filter-pills--category { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
-  .filter-pills--subcategory { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
   .table-toolbar-right { width: 100%; }
   .filter-pills { flex: 1; }
   .pill { flex: 1; text-align: center; }

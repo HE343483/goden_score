@@ -15,7 +15,7 @@ app.use(createPinia())
 app.use(router)
 app.use(ElementPlus)
 
-// Restore auth state before mounting
+// 从 sessionStorage 恢复登录状态（刷新保留，关闭浏览器后清除）
 const auth = useAuthStore()
 auth.restore()
 

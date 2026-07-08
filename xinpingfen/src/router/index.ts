@@ -5,6 +5,11 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
+      path: '/login',
+      name: 'login',
+      component: () => import('../views/LoginView/LoginView.vue'),
+    },
+    {
       path: '/',
       name: 'login',
       component: () => import('../views/LoginView/LoginView.vue'),
@@ -22,7 +27,7 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/:pathMatch(.*)*',
+      path: '/',
       redirect: '/',
     },
   ],

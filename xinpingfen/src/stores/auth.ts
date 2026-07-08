@@ -26,29 +26,29 @@ export const useAuthStore = defineStore('auth', () => {
     const record = USER_DB[username]
     if (!record || record.password !== password) return false
     user.value = { username, name: record.name, role: record.role }
-    localStorage.setItem('user', JSON.stringify(user.value))
+    sessionStorage.setItem('user', JSON.stringify(user.value))
     return true
   }
 
   /* 退出登录 */
   function logout() {
     user.value = null
-    localStorage.removeItem('user')
+    sessionStorage.removeItem('user')
   }
 
-  /* 从 localStorage 恢复登录状态 */
+  /* 从 sessionStorage 恢复登录状态（刷新保留，关闭浏览器清除） */
   function restore() {
-    const raw = localStorage.getItem('user')
+    const raw = sessionStorage.getItem('user')
     if (!raw) return
     try {
       const parsed = JSON.parse(raw)
       if (parsed && parsed.username && parsed.name && parsed.role) {
         user.value = parsed
       } else {
-        localStorage.removeItem('user')
+        sessionStorage.removeItem('user')
       }
     } catch {
-      localStorage.removeItem('user')
+      sessionStorage.removeItem('user')
     }
   }
 
