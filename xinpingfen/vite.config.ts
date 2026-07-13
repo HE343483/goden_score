@@ -10,6 +10,9 @@ import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    port: 2526,
+  },
   plugins: [
     vue(),
     vueJsx(),
