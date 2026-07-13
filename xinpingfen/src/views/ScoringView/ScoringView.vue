@@ -119,26 +119,6 @@ function submitSingle(row: ProgramWithScore) {
     total.value = filterData()
   }).catch(() => {})
 }
-
-function batchSubmit() {
-  if (store.selectedCodes.length === 0) return
-  const names = paginatedData.value
-    .filter(d => store.selectedCodes.includes(d.code))
-    .map(d => d.name)
-    .join('、')
-  ElMessageBox.confirm(
-    `确认提交选中的 ${store.selectedCodes.length} 个项目？` +
-    `<br><span style="font-size:12px;color:#999;">${names}</span>`,
-    '批量提交',
-    { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning', dangerouslyUseHTMLString: true }
-  ).then(() => {
-    store.batchSubmit()
-    multipleTableRef.value?.clearSelection()
-    ElMessage.success('提交成功！')
-    total.value = filterData()
-  }).catch(() => {})
-}
-
 function onSelectionChange(selection: ProgramWithScore[]) {
   store.selectedCodes = selection.map(s => s.code)
 }
@@ -269,14 +249,31 @@ onUnmounted(() => {
       <!-- 内容区 -->
       <div class="content-area">
         <!-- 工具栏 -->
-        <div class="toolbar">
-          <div class="toolbar-left">
+        <div class="toolbar search-area">
+          <el-form :model="store" class="search-form" label-width="90px">
+            <el-row :gutter="24">
+              <el-col :span="7">
+            <el-form-item label="节目编码" prop="keyword">
             <el-input
               v-model="store.keyword"
-              placeholder="搜索项目名称或编码"
+              placeholder="搜索节目编码"
               clearable
               class="search-input"
             />
+          </el-form-item>
+          </el-col>
+          <el-col :span="7">
+            <el-form-item label="节目名称" prop="keyword">
+            <el-input
+              v-model="store.keyword"
+              placeholder="搜索节目名称"
+              clearable
+              class="search-input"
+            />
+          </el-form-item>
+          </el-col>
+          <el-col :span="6">
+            <el-form-item label="状态" prop="filterStatus">
             <el-select
               v-model="store.filterStatus"
               placeholder="全部状态"
@@ -290,20 +287,13 @@ onUnmounted(() => {
               <el-option :value="2" label="已提交" />
               <el-option :value="-1" label="无需评分" />
             </el-select>
+          </el-form-item>
+          </el-col>
+          <el-col :span="1">
             <el-button type="primary" @click="refresh">搜索</el-button>
-          </div>
-          <div class="toolbar-right">
-            <span v-if="store.selectedCodes.length" class="selected-count">
-              已选 {{ store.selectedCodes.length }} 项
-            </span>
-            <el-button
-              type="primary"
-              :disabled="store.selectedCodes.length === 0"
-              @click="batchSubmit"
-            >
-              确认提交
-            </el-button>
-          </div>
+          </el-col>
+            </el-row>
+          </el-form>
         </div>
 
         <!-- 评分列表 -->
@@ -360,11 +350,41 @@ onUnmounted(() => {
                   <code class="code-text">{{ row.code }}</code>
                 </template>
               </el-table-column>
+              <el-table-column
+                header-align="center"
+                align="center"
+                label="参展学校"
+                min-width="150"
+              >
+                <template #default="{ row }">
+                  <span class="program-name">{{ row.school }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                header-align="center"
+                align="center"
+                label="节目类型"
+                min-width="150"
+              >
+                <template #default="{ row }">
+                  <span class="program-name">{{ row.type }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                header-align="center"
+                align="center"
+                label="组别"
+                min-width="150"
+              >
+                <template #default="{ row }">
+                  <span class="program-name">{{ row.group }}</span>
+                </template>
+              </el-table-column>
 
               <el-table-column
                 header-align="center"
                 align="center"
-                label="项目名称"
+                label="参展项目"
                 min-width="150"
               >
                 <template #default="{ row }">
@@ -755,6 +775,7 @@ onUnmounted(() => {
 
 /* 内容区*/
 .content-area {
+
   flex: 1;
   overflow-y: auto;
   padding: 18px 24px;
@@ -767,6 +788,14 @@ onUnmounted(() => {
   flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 16px;
+}
+
+.search-area {
+  background-color: #fff;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
 }
 
 .toolbar-left {
@@ -783,7 +812,7 @@ onUnmounted(() => {
 }
 
 .search-input {
-  width: 200px;
+  width: 210px;
 }
 
 .search-icon {

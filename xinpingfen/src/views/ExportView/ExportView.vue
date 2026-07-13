@@ -297,11 +297,23 @@ function logout() {
         <el-form label-width="100px">
           <el-row>
             <el-col :span="6">
-          <el-form-item label="项目编码" prop="keyword">
+          <el-form-item label="节目名称" prop="keyword">
             <div class="toolbar-search">
             <el-input
               v-model="store.keyword"
-              placeholder="搜索项目名称或编码"
+              placeholder="搜索节目名称"
+              clearable
+              class="search-input"
+            />
+          </div>
+          </el-form-item>
+          </el-col>
+          <el-col :span="6">
+          <el-form-item label="节目编号" prop="keyword">
+            <div class="toolbar-search">
+            <el-input
+              v-model="store.keyword"
+              placeholder="搜索节目编码"
               clearable
               class="search-input"
             />
@@ -428,25 +440,20 @@ function logout() {
           stripe
         >
           <el-table-column type="index" label="序号" width="50" align="center" header-align="center" />
-
-          <el-table-column prop="code" label="项目编码" width="150" align="center" header-align="center">
+          <el-table-column prop="code" label="节目编码" width="150" align="center" header-align="center">
             <template #default="{ row }">
               <code class="code-cell">{{ row.code }}</code>
             </template>
           </el-table-column>
-
-          <el-table-column prop="name" label="项目名称" min-width="180" header-align="left">
+          <el-table-column prop="school" label="学校" width="100" align="center" header-align="center" />
+          <el-table-column prop="subCategory" label="类型" width="100" align="center" header-align="center" />
+          <el-table-column prop="group" label="组别" width="60" align="center" header-align="center" />
+          <el-table-column prop="name" label="节目名称" min-width="180" header-align="left">
             <template #default="{ row }">
               <span class="name-cell">{{ row.name }}</span>
             </template>
           </el-table-column>
-
-          <el-table-column prop="subCategory" label="类别" width="100" align="center" header-align="center" />
-
-          <el-table-column prop="group" label="组别" width="60" align="center" header-align="center" />
-
           <el-table-column prop="teamType" label="形式" width="60" align="center" header-align="center" />
-
           <el-table-column label="分数" width="90" align="center" header-align="center">
             <template #default="{ row }">
               <span :class="['score-cell', row.status === 2 ? 'score-cell--final' : '', row.status === 1 ? 'score-cell--draft' : '']">
@@ -454,7 +461,6 @@ function logout() {
               </span>
             </template>
           </el-table-column>
-          <el-table-column prop="school" label="学校" width="100" align="center" header-align="center" />
           <el-table-column prop="award" label="奖项" width="100" align="center" header-align="center" />
           <el-table-column label="状态" width="100" align="center" header-align="center">
             <template #default="{ row }">
