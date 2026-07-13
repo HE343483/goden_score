@@ -23,7 +23,7 @@ const router = createRouter({
     {
       path: '/export',
       name: 'export',
-      component: () => import('../views/ExportView/ExportView.vue'),
+      component: () => import('../views/Export/ExportView/ExportView.vue'),
       meta: { requiresAuth: true },
     },
     {
@@ -33,19 +33,18 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to, _from, next) => {
+router.beforeEach((to, _from) => {
   const auth = useAuthStore()
   if (to.meta.requiresAuth && !auth.isLoggedIn) {
-    next('/')
-  } else if (to.path === '/' && auth.isLoggedIn) {
+    return '/'
+  }
+  if (to.path === '/' && auth.isLoggedIn) {
     /* 根据角色跳转到不同首页 */
-    if (auth.isExporter) {
-      next('/export')
+    if (auth.isAdmin) {
+      return '/export'
     } else {
-      next('/scoring')
+      return '/scoring'
     }
-  } else {
-    next()
   }
 })
 

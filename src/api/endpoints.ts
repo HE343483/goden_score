@@ -14,13 +14,13 @@ export const AUTH = {
 
 /**
  * 专家评分模块
- * 对照: scoring/api.py # expert_programs / save_scores / submit_scores
+ * 对照: scoring/api.py # reviewer_programs / save_scores / submit_scores
  */
-export const EXPERT = {
+export const REVIEWER = {
   /** GET 专家分配项目列表 ?status= */
-  PROGRAMS: '/expert/programs',
+  PROGRAMS: '/reviewer/programs',
   /** POST 提交评分 { items: [{ programId, score, comment }] } */
-  SCORES_SUBMIT: '/expert/scores/submit',
+  SCORES_SUBMIT: '/reviewer/scores/submit',
 } as const
 
 /**

@@ -3,6 +3,7 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
+import { doLoginApi } from './LoginView.js'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -15,12 +16,15 @@ const rules = {
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
 }
 
-function doLogin(username: string, password: string) {
-  if (auth.login(username, password)) {
-    const path = auth.isExporter ? '/export' : '/scoring'
+async function doLogin(username: string, password: string) {
+  try {
+    const { user } = await doLoginApi(username, password)
+    ElMessage.success('登录成功')
+    auth.setUser({ username: user.username, name: user.name, role: user.role })
+    const path = user.role === 'reviewer' ? '/scoring' : '/export'
     router.push(path)
-  } else {
-    ElMessage.error('账号或密码错误，请重试')
+  } catch (err) {
+    ElMessage.error(err.message || '账号或密码错误，请重试')
   }
 }
 
@@ -28,10 +32,9 @@ function submit() {
   formRef.value.validate((valid: boolean) => {
     if (!valid) return
     loading.value = true
-    setTimeout(() => {
+    doLogin(form.username, form.password).finally(() => {
       loading.value = false
-      doLogin(form.username, form.password)
-    }, 400)
+    })
   })
 }
 </script>

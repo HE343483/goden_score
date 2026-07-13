@@ -1,48 +1,56 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { API_BASE_URL } from '@/api/config'
 
 export interface User {
   username: string
   name: string
-  role: 'expert' | 'exporter'
-}
-
-/* 模拟用户数据库 */
-const USER_DB: Record<string, { password: string; name: string; role: User['role'] }> = {
-  expert: { password: 'expert123', name: '张专家', role: 'expert' },
-  export: { password: 'export123', name: '导出员', role: 'exporter' },
+  role: 'reviewer' | 'admin'
 }
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
 
   const isLoggedIn = computed(() => user.value !== null)
-  const isExpert = computed(() => user.value?.role === 'expert')
-  const isExporter = computed(() => user.value?.role === 'exporter')
+  const isReviewer = computed(() => user.value?.role === 'reviewer')
+  const isAdmin = computed(() => user.value?.role === 'admin')
   const userName = computed(() => user.value?.name ?? '')
 
-  /* 登录验证 */
-  function login(username: string, password: string): boolean {
-    const record = USER_DB[username]
-    if (!record || record.password !== password) return false
-    user.value = { username, name: record.name, role: record.role }
-    sessionStorage.setItem('user', JSON.stringify(user.value))
-    return true
+  /* 登录成功后设置用户状态 */
+  function setUser(u: User) {
+    user.value = u
+    sessionStorage.setItem('user', JSON.stringify(u))
   }
 
-  /* 退出登录 */
-  function logout() {
+  /* 退出登录 — 调用后端 /api/auth/logout */
+  async function logout() {
+    const token = localStorage.getItem('accessToken')
+    try {
+      await fetch(`${API_BASE_URL}/auth/logout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      })
+    } catch {
+      // 即使接口失败也继续清除本地状态
+    }
     user.value = null
+    localStorage.removeItem('accessToken')
+    localStorage.removeItem('refreshToken')
     sessionStorage.removeItem('user')
   }
 
   /* 从 sessionStorage 恢复登录状态（刷新保留，关闭浏览器清除） */
   function restore() {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
     const raw = sessionStorage.getItem('user')
     if (!raw) return
     try {
       const parsed = JSON.parse(raw)
-      if (parsed && parsed.username && parsed.name && parsed.role) {
+      if (parsed && parsed.username && parsed.role) {
         user.value = parsed
       } else {
         sessionStorage.removeItem('user')
@@ -52,5 +60,5 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { user, isLoggedIn, isExpert, isExporter, userName, login, logout, restore }
+  return { user, isLoggedIn, isReviewer, isAdmin, userName, setUser, logout, restore }
 })

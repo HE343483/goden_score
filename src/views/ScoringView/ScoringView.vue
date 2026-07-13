@@ -241,7 +241,7 @@ onUnmounted(() => {
           <span class="name-divider">|</span>
           <span class="user-name">{{ auth.userName }}</span>
           <button class="logout-btn" @click="logout">
-            退出
+            退出登录
           </button>
         </div>
       </header>

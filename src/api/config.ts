@@ -5,7 +5,7 @@
 
 /** 后端 API 基础地址（按环境切换） */
 export const API_BASE_URL: string =
-  import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000'
+  import.meta.env.VITE_API_BASE_URL ?? 'https://entered-prospective-known-frequencies.trycloudflare.com/api'
 
 /** 请求超时时间（毫秒） */
 export const REQUEST_TIMEOUT = 15000
