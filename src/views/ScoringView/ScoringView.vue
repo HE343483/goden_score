@@ -411,7 +411,8 @@ onUnmounted(() => {
                 header-align="center"
                 align="center"
                 label="操作"
-                min-width="80"
+                min-width="180"
+                fixed="right"
               >
                 <template #default="{ row }">
                   <!-- 未评分：输入框 + 印章按钮 -->
@@ -775,10 +776,10 @@ onUnmounted(() => {
 
 /* 内容区*/
 .content-area {
-
   flex: 1;
   overflow-y: auto;
   padding: 18px 24px;
+  min-width: 0;
 }
 
 .toolbar {
@@ -838,6 +839,7 @@ onUnmounted(() => {
   border: 1px solid var(--color-border-light);
   box-shadow: var(--shadow-sm);
   transition: box-shadow 0.2s;
+  min-width: 0;
 }
 
 .content-card:hover {
@@ -883,6 +885,9 @@ onUnmounted(() => {
   margin: 0 -4px;
   padding: 0 4px;
   border-radius: var(--radius-md);
+  scrollbar-width: auto;
+  scrollbar-color: #c0c0c0 #f0f0f0;
+  min-width: 0;
 }
 
 .table-wrapper::-webkit-scrollbar {
@@ -890,12 +895,18 @@ onUnmounted(() => {
 }
 
 .table-wrapper::-webkit-scrollbar-track {
-  background: transparent;
+  background: #f0f0f0;
+  border-radius: 5px;
 }
 
 .table-wrapper::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 3px;
+  background: #c0c0c0;
+  border-radius: 5px;
+  border: 2px solid #f0f0f0;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #999;
 }
 
 .code-text {
