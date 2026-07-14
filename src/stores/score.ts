@@ -73,7 +73,9 @@ export const useScoreStore = defineStore('score', () => {
   function updateStatus(code: string, status: number, score: number | null) {
     const idx = findIndex(code)
     if (idx === -1) return
-    const item = { ...allPrograms.value[idx], status }
+    const current = allPrograms.value[idx]
+    if (!current) return
+    const item: ProgramWithScore = { ...current, status }
     if (score !== null) item.score = score
     allPrograms.value[idx] = item
   }
@@ -93,7 +95,11 @@ export const useScoreStore = defineStore('score', () => {
   }
 
   function submitToFinal(code: string) {
-    updateStatus(code, 2, allPrograms.value[findIndex(code)].score)
+    const idx = findIndex(code)
+    if (idx === -1) return
+    const current = allPrograms.value[idx]
+    if (!current) return
+    updateStatus(code, 2, current.score)
   }
 
   function markSameSchoolAvoid(code: string) {
@@ -104,12 +110,13 @@ export const useScoreStore = defineStore('score', () => {
     const idx = findIndex(code)
     if (idx === -1) return
     const item = allPrograms.value[idx]
+    if (!item) return
     const judges = item.judges.map(j =>
       j.name === judgeName ? { ...j, score: null } : j
     )
     const validScores = judges.filter(j => j.score !== null).map(j => j.score!) as number[]
     const newScore = validScores.length > 0 ? validScores.reduce((a, b) => a + b, 0) / validScores.length : null
-    allPrograms.value[idx] = { ...item, judges, score: newScore, status: validScores.length > 0 ? 1 : 0 }
+    allPrograms.value[idx] = { ...item, judges, score: newScore, status: validScores.length > 0 ? 1 : 0 } as ProgramWithScore
   }
 
   return {

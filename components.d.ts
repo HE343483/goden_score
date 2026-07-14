@@ -20,7 +20,6 @@ declare module 'vue' {
     ElFormItem: typeof import('element-plus/es')['ElFormItem']
     ElImage: typeof import('element-plus/es')['ElImage']
     ElInput: typeof import('element-plus/es')['ElInput']
-    ElInputNumber: typeof import('element-plus/es')['ElInputNumber']
     ElMenu: typeof import('element-plus/es')['ElMenu']
     ElMenuItem: typeof import('element-plus/es')['ElMenuItem']
     ElOption: typeof import('element-plus/es')['ElOption']
@@ -32,7 +31,6 @@ declare module 'vue' {
     ElTabPane: typeof import('element-plus/es')['ElTabPane']
     ElTabs: typeof import('element-plus/es')['ElTabs']
     ElText: typeof import('element-plus/es')['ElText']
-    ExportDialog: typeof import('./src/components/ExportDialog.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
   }
@@ -48,7 +46,6 @@ declare global {
   const ElFormItem: typeof import('element-plus/es')['ElFormItem']
   const ElImage: typeof import('element-plus/es')['ElImage']
   const ElInput: typeof import('element-plus/es')['ElInput']
-  const ElInputNumber: typeof import('element-plus/es')['ElInputNumber']
   const ElMenu: typeof import('element-plus/es')['ElMenu']
   const ElMenuItem: typeof import('element-plus/es')['ElMenuItem']
   const ElOption: typeof import('element-plus/es')['ElOption']
@@ -60,7 +57,6 @@ declare global {
   const ElTabPane: typeof import('element-plus/es')['ElTabPane']
   const ElTabs: typeof import('element-plus/es')['ElTabs']
   const ElText: typeof import('element-plus/es')['ElText']
-  const ExportDialog: typeof import('./src/components/ExportDialog.vue')['default']
   const RouterLink: typeof import('vue-router')['RouterLink']
   const RouterView: typeof import('vue-router')['RouterView']
 }
