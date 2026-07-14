@@ -639,55 +639,6 @@
   color: var(--color-text-muted);
   letter-spacing: 1px;
 }
-
-/*勾选列表头+单元格居中 — 用 :deep() 穿透 scoped 样式 */
-:deep(.el-table .el-table-column--selection .cell) {
-  text-align: center !important;
-  padding: 0 !important;
-}
-:deep(.el-table .el-table-column--selection .el-checkbox) {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  margin: 0 auto;
-  vertical-align: middle;
-  line-height: 1;
-}
-:deep(.el-table .el-table-column--selection .el-checkbox__inner) {
-  display: inline-block;
-  margin: 0;
-  position: static;
-  transform: none;
-}
-:deep(.el-table .el-table-column--selection .el-checkbox__original),
-:deep(.el-table .el-table-column--selection .el-checkbox__label) {
-  display: none !important;
-  width: 0 !important;
-  height: 0 !important;
-}
-
-/* 自适应 — 1200px 以下 */
-@media (max-width: 1200px) {
-  .top-header { padding: 0 18px; }
-  .content-area { padding: 16px 18px; }
-  .search-input { width: 170px; }
-  .status-select { width: 120px; }
-}
-
-/*自适应 — 1024px 以下（平板横屏） */
-@media (max-width: 1024px) {
-  .sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100vh;
-    transform: translateX(-100%);
-    box-shadow: 4px 0 24px rgba(0,0,0,0.18);
-  }
-  .sidebar--open { transform: translateX(0); }
-
-  .hamburger-btn { display: flex; }
-
   .top-header { padding: 0 14px; height: 48px; }
   .header-title { font-size: 15px; }
 

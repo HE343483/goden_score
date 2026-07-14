@@ -350,6 +350,7 @@ onUnmounted(() => {
               @selection-change="onSelectionChange"
               row-key="code"
             >
+              <el-table-column type="selection" width="0" />
               <el-table-column
                 type="selection"
                 width="44"
@@ -357,7 +358,6 @@ onUnmounted(() => {
                 align="center"
                 :selectable="checkSelectable"
               />
-
               <el-table-column
                 header-align="center"
                 align="center"
@@ -491,4 +491,20 @@ onUnmounted(() => {
 
 <style scoped>
 @import './ScoringView.css';
+
+/* 勾选列 — 表头与行复选框左右对齐（:deep 写在组件内确保被 Vue 编译器正确处理） */
+:deep(.el-table .el-table-column--selection .cell) {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  padding: 0 !important;
+}
+:deep(.el-table .el-table-column--selection .el-checkbox) {
+  margin: 0 !important;
+}
+:deep(.el-table .el-table-column--selection .el-checkbox__input) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 </style>
