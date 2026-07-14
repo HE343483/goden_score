@@ -173,6 +173,7 @@ function doExport() {
     const lines: string[] = [BOM + headers.join(',')]
     for (const [, items] of groups) {
       const first = items[0]
+      if (!first) continue
       lines.push(`\n【${first.majorCategory} · ${first.subCategory}】`)
       for (const d of items) {
         lines.push([

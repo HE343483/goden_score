@@ -259,7 +259,7 @@ onUnmounted(() => {
           <h1 class="header-title">评分管理</h1>
         </div>
         <div class="top-header-right">
-          <span class="top-header-role">{{ auth.isExpert ? '评审专家' : '管理员' }}</span>
+          <span class="top-header-role">{{ auth.isReviewer ? '评审专家' : '管理员' }}</span>
           <span class="name-divider">|</span>
           <span class="user-name">{{ auth.userName }}</span>
           <button class="logout-btn" @click="logout">

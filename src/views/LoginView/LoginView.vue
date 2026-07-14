@@ -24,7 +24,7 @@ async function doLogin(username: string, password: string) {
     const path = user.role === 'reviewer' ? '/scoring' : '/export'
     router.push(path)
   } catch (err) {
-    ElMessage.error(err.message || '账号或密码错误，请重试')
+    ElMessage.error((err instanceof Error ? err.message : null) || '账号或密码错误，请重试')
   }
 }
 
