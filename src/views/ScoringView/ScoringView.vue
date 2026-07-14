@@ -393,39 +393,7 @@ onUnmounted(() => {
                   <span class="program-name">{{ row.type }}</span>
                 </template>
               </el-table-column>
-              <el-table-column
-                header-align="center"
-                align="center"
-                label="分数"
-                min-width="100"
-              >
-                <template #default="{ row }">
-                  <div class="score-cell">
-                    <!-- 草稿(0) / 暂存(1): 点击切换输入/显示，失焦自动保存 -->
-                    <template v-if="row.status === 0 || row.status === 1">
-                      <el-input
-                        v-if="editingCode === row.code"
-                        ref="scoreInputRef"
-                        v-model.number="store.editingScores[row.code]"
-                        size="small"
-                        placeholder="输入分数"
-                        controls-position="right"
-                        @blur="onScoreBlur(row)"
-                      />
-                      <span
-                        v-else
-                        class="score-text"
-                        @click="startEdit(row)"
-                      >
-                        {{ (store.editingScores[row.code] || row.score) ? (store.editingScores[row.code] || row.score) + '分' : '点击输入' }}
-                      </span>
-                    </template>
-                    <span v-else-if="row.status === 2" class="score-submitted">{{ row.score }}{{ row.score ? '分' : '' }}</span>
-                    <!-- 无需评分(-1) -->
-                    <span v-else>—</span>
-                  </div>
-                </template>
-              </el-table-column>
+
               <el-table-column
                 header-align="center"
                 align="center"
@@ -459,7 +427,39 @@ onUnmounted(() => {
                   </span>
                 </template>
               </el-table-column>
-
+              <el-table-column
+                header-align="center"
+                align="center"
+                label="分数"
+                min-width="100"
+              >
+                <template #default="{ row }">
+                  <div class="score-cell">
+                    <!-- 草稿(0) / 暂存(1): 点击切换输入/显示，失焦自动保存 -->
+                    <template v-if="row.status === 0 || row.status === 1">
+                      <el-input
+                        v-if="editingCode === row.code"
+                        ref="scoreInputRef"
+                        v-model.number="store.editingScores[row.code]"
+                        size="small"
+                        placeholder="输入分数"
+                        controls-position="right"
+                        @blur="onScoreBlur(row)"
+                      />
+                      <span
+                        v-else
+                        class="score-text"
+                        @click="startEdit(row)"
+                      >
+                        {{ (store.editingScores[row.code] || row.score) ? (store.editingScores[row.code] || row.score) + '分' : '点击输入' }}
+                      </span>
+                    </template>
+                    <span v-else-if="row.status === 2" class="score-submitted">{{ row.score }}{{ row.score ? '分' : '' }}</span>
+                    <!-- 无需评分(-1) -->
+                    <span v-else>—</span>
+                  </div>
+                </template>
+              </el-table-column>
               <!-- 操作列 -->
             </el-table>
           </div>
