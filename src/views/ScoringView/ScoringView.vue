@@ -423,7 +423,7 @@ onUnmounted(() => {
                         {{ (store.editingScores[row.code] || row.score) ? (store.editingScores[row.code] || row.score) + '分' : '点击输入' }}
                       </span>
                     </template>
-                    <span v-else-if="row.status === 2">{{ row.score }}{{ row.score ? '分' : '' }}</span>
+                    <span v-else-if="row.status === 2" class="score-submitted">{{ row.score }}{{ row.score ? '分' : '' }}</span>
                     <!-- 无需评分(-1) -->
                     <span v-else>—</span>
                   </div>

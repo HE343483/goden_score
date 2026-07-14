@@ -437,7 +437,7 @@
 }
 
 .score-submitted {
-  color: #2E7D5B;
+  color: #1B5E20;
   font-weight: 600;
 }
 
@@ -640,14 +640,30 @@
   letter-spacing: 1px;
 }
 
-/*勾选列表头+单元格居中*/
-.el-table .el-table-column--selection .cell {
-  display: flex !important;
-  justify-content: center !important;
-  align-items: center !important;
+/*勾选列表头+单元格居中 — 用 :deep() 穿透 scoped 样式 */
+:deep(.el-table .el-table-column--selection .cell) {
+  text-align: center !important;
+  padding: 0 !important;
 }
-.el-table .el-table-column--selection .el-checkbox {
+:deep(.el-table .el-table-column--selection .el-checkbox) {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin: 0 auto;
   vertical-align: middle;
+  line-height: 1;
+}
+:deep(.el-table .el-table-column--selection .el-checkbox__inner) {
+  display: inline-block;
+  margin: 0;
+  position: static;
+  transform: none;
+}
+:deep(.el-table .el-table-column--selection .el-checkbox__original),
+:deep(.el-table .el-table-column--selection .el-checkbox__label) {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 /* 自适应 — 1200px 以下 */
