@@ -1,9 +1,27 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
+import { ref, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { Download, User } from '@element-plus/icons-vue'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
+
+const sidebarCollapsed = ref(false)
+
+/* 导航菜单配置 */
+const menuItems = [
+  { path: '/export/list', name: '评分数据导出', icon: Download },
+  { path: '/export/experts', name: '专家账号管理', icon: User },
+  // { path: '/export/rules', name: '规则配置', icon: Setting },
+]
+
+const activeMenu = computed(() => route.path)
+
+function navigate(path: string) {
+  router.push(path)
+}
 
 async function logout() {
   const ok = await auth.logout()
@@ -20,7 +38,7 @@ async function logout() {
           <el-image src="/logo.png" class="header-logo" />
         </div>
         <div class="header-brand">
-          <span class="header-title">评分数据导出</span>
+          <span class="header-title">管理平台</span>
           <span class="header-subtitle">四川省大学生艺术展演</span>
         </div>
       </div>
@@ -32,9 +50,27 @@ async function logout() {
       </div>
     </header>
 
-    <!-- 子路由内容 -->
-    <div class="export-body">
-      <router-view />
+    <div class="export-main">
+      <!-- 左侧导航栏 -->
+      <aside class="export-sidebar" :class="{ collapsed: sidebarCollapsed }">
+        <nav class="sidebar-nav">
+          <div
+            v-for="item in menuItems"
+            :key="item.path"
+            class="sidebar-item"
+            :class="{ active: activeMenu === item.path }"
+            @click="navigate(item.path)"
+          >
+            <el-icon class="sidebar-icon"><component :is="item.icon" /></el-icon>
+            <span class="sidebar-label" v-show="!sidebarCollapsed">{{ item.name }}</span>
+          </div>
+        </nav>
+      </aside>
+
+      <!-- 子路由内容 -->
+      <div class="export-body">
+        <router-view />
+      </div>
     </div>
 
     <!-- 页脚 -->
@@ -53,23 +89,6 @@ async function logout() {
   position: relative;
 }
 
-/* ═══ 背景水印 ═══ */
-.bg-watermark {
-  position: fixed;
-  font-family: var(--font-display);
-  font-weight: 700;
-  color: var(--color-accent-subtle, rgba(217,68,68,0.035));
-  user-select: none;
-  pointer-events: none;
-  z-index: 0;
-  font-size: clamp(200px, 30vw, 400px);
-  bottom: -8%;
-  right: -4%;
-  transform: rotate(-8deg);
-  opacity: 0.5;
-  letter-spacing: 0;
-}
-
 /* ═══ 顶栏 ═══ */
 .export-header {
   display: flex;
@@ -81,7 +100,7 @@ async function logout() {
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
   position: relative;
-  z-index: 1;
+  z-index: 100;
 }
 
 .header-left {
@@ -163,14 +182,106 @@ async function logout() {
   background: var(--color-accent-light);
 }
 
+/* ═══ 主体布局（侧边栏 + 内容） ═══ */
+.export-main {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* ═══ 左侧导航栏 ═══ */
+.export-sidebar {
+  width: 200px;
+  min-width: 200px;
+  background: var(--color-card);
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  transition: width 0.25s ease, min-width 0.25s ease;
+  position: relative;
+  z-index: 50;
+}
+
+.export-sidebar.collapsed {
+  width: 56px;
+  min-width: 56px;
+}
+
+.sidebar-toggle {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-border-light);
+  color: var(--color-text-muted);
+  font-size: 12px;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.sidebar-toggle:hover {
+  color: var(--color-accent);
+  background: var(--color-accent-light);
+}
+
+.toggle-icon {
+  transition: transform 0.2s;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  transition: all 0.2s;
+  border-left: 3px solid transparent;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.sidebar-item:hover {
+  color: var(--color-text);
+  background: var(--color-accent-light);
+}
+
+.sidebar-item.active {
+  color: var(--color-accent);
+  background: var(--color-accent-light);
+  border-left-color: var(--color-accent);
+  font-weight: 600;
+}
+
+.sidebar-icon {
+  font-size: 18px;
+  width: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sidebar-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ═══ 内容区 ═══ */
 .export-body {
   flex: 1;
   padding: 28px;
   overflow-y: auto;
-  max-width: 1280px;
-  width: 100%;
-  margin: 0 auto;
   box-sizing: border-box;
   position: relative;
   z-index: 1;
@@ -199,6 +310,8 @@ async function logout() {
 }
 
 @media (max-width: 768px) {
+  .export-sidebar { width: 56px; min-width: 56px; }
+  .sidebar-label { display: none; }
   .export-header { padding: 0 16px; }
   .export-body { padding: 16px; }
   .header-role { display: none; }
@@ -206,7 +319,6 @@ async function logout() {
 }
 
 @media (max-width: 480px) {
-  .bg-watermark { display: none; }
   .app-footer { padding: 10px 0; }
   .footer-text { font-size: 11px; }
 }
