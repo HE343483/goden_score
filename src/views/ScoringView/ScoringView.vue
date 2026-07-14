@@ -350,12 +350,10 @@ onUnmounted(() => {
               @selection-change="onSelectionChange"
               row-key="code"
             >
-              <el-table-column type="selection" width="0" />
+              <el-table-column type="selection" width="-10" />
               <el-table-column
                 type="selection"
                 width="44"
-                header-align="center"
-                align="center"
                 :selectable="checkSelectable"
               />
               <el-table-column
@@ -365,7 +363,6 @@ onUnmounted(() => {
                 type="index"
                 width="46"
               />
-
               <el-table-column
                 header-align="center"
                 align="center"
