@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   fetchExperts,
@@ -7,17 +7,42 @@ import {
 } from './ExpertAccountManagement.js'
 import AssignedProgramsDialog from './comment/AssignedProgramsDialog.vue'
 
-/* ── 状态 ── */
+/* ── 数据 ── */
 const loading = ref(false)
-const experts = ref<ExpertApi[]>([])
-const total = ref(0)
-const page = ref(1)
-const limit = ref(15)
+const allExperts = ref<ExpertApi[]>([])
 
 /* ── 查询条件 ── */
 const filterSchool = ref('')
 const filterStatus = ref('')
-const schoolOptions = ref<string[]>([])
+
+/* ── 前端筛选 ── */
+const filteredExperts = computed(() => {
+  let list = allExperts.value
+  if (filterSchool.value) {
+    const kw = filterSchool.value.toLowerCase()
+    list = list.filter(e => (e.school ?? '').toLowerCase().includes(kw))
+  }
+  if (filterStatus.value) {
+    list = list.filter(e => e.status === filterStatus.value)
+  }
+  return list
+})
+
+/* ── 前端分页 ── */
+const currentPage = ref(1)
+const pageSize = ref(15)
+
+const total = computed(() => filteredExperts.value.length)
+
+const pagedExperts = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredExperts.value.slice(start, start + pageSize.value)
+})
+
+/* 筛选条件变化时重置到第一页 */
+watch([filterSchool, filterStatus], () => {
+  currentPage.value = 1
+})
 
 /* ── 查看分配节目对话框 ── */
 const programsDialogVisible = ref(false)
@@ -32,14 +57,8 @@ const newStatus = ref('')
 async function loadData() {
   loading.value = true
   try {
-    const res = await fetchExperts({
-      page: page.value,
-      limit: limit.value,
-      school: filterSchool.value || undefined,
-      status: filterStatus.value || undefined,
-    })
-    experts.value = res.list
-    total.value = res.total
+    const res = await fetchExperts({ limit: 999 })
+    allExperts.value = res.list
   } catch {
     ElMessage.error('获取专家列表失败')
   } finally {
@@ -47,39 +66,24 @@ async function loadData() {
   }
 }
 
-async function loadSchools() {
-  try {
-    schoolOptions.value = await fetchSchoolList()
-  } catch {
-    // 静默失败
-  }
-}
-
-function handleSearch() {
-  page.value = 1
-  loadData()
-}
-
 function handleReset() {
   filterSchool.value = ''
   filterStatus.value = ''
-  page.value = 1
-  loadData()
+  currentPage.value = 1
 }
 
 function handlePageChange(p: number) {
-  page.value = p
-  loadData()
+  currentPage.value = p
 }
 
 /* ── 查看分配节目 ── */
-function openProgramsDialog(row: any) {
+function openProgramsDialog(row: ExpertApi) {
   programsTarget.value = row
   programsDialogVisible.value = true
 }
 
 /* ── 更改状态 ── */
-function openStatusDialog(row: any) {
+function openStatusDialog(row: ExpertApi) {
   statusTarget.value = row
   newStatus.value = row.status
   statusDialogVisible.value = true
@@ -104,7 +108,6 @@ async function confirmStatus() {
 }
 
 onMounted(() => {
-  loadSchools()
   loadData()
 })
 </script>
@@ -120,7 +123,6 @@ onMounted(() => {
             placeholder="输入学校名称模糊搜索"
             clearable
             style="width: 230px"
-            @change="handleSearch"
           />
         </el-form-item>
         <el-form-item label="状态">
@@ -129,14 +131,12 @@ onMounted(() => {
             placeholder="全部状态"
             clearable
             style="width: 140px"
-            @change="handleSearch"
           >
             <el-option label="启用" value="enabled" />
             <el-option label="停用" value="disabled" />
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button @click="handleSearch" type="primary">查询</el-button>
           <el-button @click="handleReset">重置</el-button>
         </el-form-item>
       </el-form>
@@ -145,7 +145,7 @@ onMounted(() => {
     <!-- 数据表格 -->
     <el-card shadow="never" class="table-card">
       <el-table
-        :data="experts"
+        :data="pagedExperts"
         v-loading="loading"
         stripe
         style="width: 100%"
@@ -157,7 +157,7 @@ onMounted(() => {
         <el-table-column prop="school" label="学校" min-width="200" show-overflow-tooltip />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'enabled' ? 'success' : 'info'" size="small">
+            <el-tag :type="row.status === 'enabled' ? 'success' : 'danger'" size="small">
               {{ row.statusLabel }}
             </el-tag>
           </template>
@@ -177,14 +177,14 @@ onMounted(() => {
       <!-- 分页 -->
       <div class="pagination-wrap">
         <el-pagination
-          v-model:current-page="page"
-          v-model:page-size="limit"
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
           :total="total"
           :page-sizes="[15, 30, 50]"
           layout="total, sizes, prev, pager, next, jumper"
           background
           @current-change="handlePageChange"
-          @size-change="page = 1; loadData()"
+          @size-change="currentPage = 1"
         />
       </div>
     </el-card>

@@ -22,15 +22,6 @@ export async function fetchExperts(params = {}) {
   }
 }
 
-/**
- * 获取学校列表（用于下拉筛选）
- * GET /api/admin/schools
- * @returns {Promise<string[]>}
- */
-export async function fetchSchoolList() {
-  const res = await request.get('/admin/schools')
-  return res.data?.data ?? []
-}
 
 /**
  * 更改专家状态
@@ -39,7 +30,7 @@ export async function fetchSchoolList() {
  * @param {string} status
  */
 export async function updateExpertStatus(id, status) {
-  await request.put(`/admin/experts/${id}`, { status })
+  await request.patch(`/admin/experts/${id}`, { status })
 }
 
 /**

@@ -2,7 +2,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useScoreStore, type ProgramWithScore } from '@/stores/score'
-import { fetchAdminPrograms, fetchAdminStats } from './ExportView.js'
+import { fetchAdminPrograms, fetchAdminStats, updateExemption } from './ExportView.js'
 import ExportDialog from './comment/ExportDialog.vue'
 import DetailDialog from './comment/DetailDialog.vue'
 
@@ -23,6 +23,11 @@ onMounted(async () => {
   store.setPrograms(programsRes.list)
   statsData.value = statsRes
 })
+
+async function reloadPrograms() {
+  const programsRes = await fetchAdminPrograms({ limit: 100 })
+  store.setPrograms(programsRes.list)
+}
 
 /* ── 静态分类筛选面板 ── */
 interface CatLeaf {
@@ -219,13 +224,19 @@ function handleEdit(row: ProgramWithScore) {
   detailDialogVisible.value = true
 }
 
-function handleDelete(row: ProgramWithScore) {
+async function handleDelete(row: ProgramWithScore) {
   if (row.status === 'exempt') {
-    store.requestRescore(row.code)
-    ElMessage.success(`${row.code} 已恢复`)
+    try {
+      await updateExemption({ program_id: row.id, exemption_type: 'cancel_abandoned' })
+      await reloadPrograms()
+      ElMessage.success(`${row.code} 已恢复`)
+    } catch { /* error handled by interceptor */ }
   } else {
-    store.markAbandoned(row.code)
-    ElMessage.warning(`${row.code} 已标记为弃赛`)
+    try {
+      await updateExemption({ program_id: row.id, exemption_type: 'abandoned' })
+      await reloadPrograms()
+      ElMessage.success(`${row.code} 已标记为弃赛`)
+    } catch { /* error handled by interceptor */ }
   }
 }
 </script>
