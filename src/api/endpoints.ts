@@ -14,13 +14,15 @@ export const AUTH = {
 
 /**
  * 专家评分模块
- * 对照: scoring/api.py # reviewer_programs / save_scores / submit_scores
+ * 对照: scoring/api.py 专家端路由
  */
 export const REVIEWER = {
-  /** GET 专家分配项目列表 ?status= */
-  PROGRAMS: '/reviewer/programs',
-  /** POST 提交评分 { items: [{ programId, score, comment }] } */
-  SCORES_SUBMIT: '/reviewer/scores/submit',
+  /** GET 专家分配项目列表 */
+  PROGRAMS: '/expert/programs',
+  /** POST 保存评分 { items: [{ program_id, score }] } */
+  SCORES_SAVE: '/expert/scores/save',
+  /** POST 提交评分（锁定不可修改） { items: [{ program_id }] } */
+  SCORES_SUBMIT: '/expert/scores/submit',
 } as const
 
 /**

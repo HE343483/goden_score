@@ -22,24 +22,25 @@ export const useAuthStore = defineStore('auth', () => {
     sessionStorage.setItem('user', JSON.stringify(u))
   }
 
-  /* 退出登录 — 调用后端 /api/auth/logout */
-  async function logout() {
+  /* 退出登录 — 调用后端 /api/auth/logout，code=0 才清除本地状态 */
+  async function logout(): Promise<boolean> {
     const token = localStorage.getItem('accessToken')
-    try {
-      await fetch(`${API_BASE_URL}/auth/logout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      })
-    } catch {
-      // 即使接口失败也继续清除本地状态
+    const res = await fetch(`${API_BASE_URL}/auth/logout`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    })
+    const body = await res.json()
+    if (body.code === 0) {
+      user.value = null
+      localStorage.removeItem('accessToken')
+      localStorage.removeItem('refreshToken')
+      sessionStorage.removeItem('user')
+      return true
     }
-    user.value = null
-    localStorage.removeItem('accessToken')
-    localStorage.removeItem('refreshToken')
-    sessionStorage.removeItem('user')
+    return false
   }
 
   /* 从 sessionStorage 恢复登录状态（刷新保留，关闭浏览器清除） */

@@ -1,14 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { useAuthStore } from '@/stores/auth'
 import { useScoreStore, type ProgramWithScore } from '@/stores/score'
 import ExportDialog from './comment/ExportDialog.vue'
 import DetailDialog from './comment/DetailDialog.vue'
 
-const router = useRouter()
-const auth = useAuthStore()
 const store = useScoreStore()
 
 const activeTab = ref('all')
@@ -232,276 +228,242 @@ function handleSameSchool(row: ProgramWithScore) {
     ElMessage.warning(`${row.code} 已标记为同校弃赛`)
   }
 }
-
-function logout() {
-  auth.logout()
-  router.push('/')
-}
 </script>
 
 <template>
-  <div class="export-layout">
-    <!-- 顶栏 -->
-    <header class="export-header">
-      <div class="header-left">
-        <div class="header-brand-icon">
-          <el-image src="/logo.png" class="header-logo" />
-        </div>
-        <div class="header-brand">
-          <span class="header-title">评分导出</span>
-          <span class="header-subtitle">四川省大学生艺术展演</span>
-        </div>
+  <!-- 统计卡片行列 -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-accent stat-accent--total"></div>
+      <div class="stat-body">
+        <span class="stat-num">{{ stats.total }}</span>
+        <span class="stat-label">总项目</span>
       </div>
-      <div class="header-right">
-        <span class="header-role">管理人员</span>
-        <span class="header-divider">|</span>
-        <span class="header-user">{{ auth.userName }}</span>
-        <button class="logout-btn" @click="logout">退出登录</button>
+    </div>
+    <div class="stat-card">
+      <div class="stat-accent stat-accent--scored"></div>
+      <div class="stat-body">
+        <span class="stat-num">{{ stats.scored }}</span>
+        <span class="stat-label">已评分</span>
       </div>
-    </header>
-
-    <!-- 内容 -->
-    <div class="export-body">
-      <!-- 统计卡片行列 -->
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-accent stat-accent--total"></div>
-          <div class="stat-body">
-            <span class="stat-num">{{ stats.total }}</span>
-            <span class="stat-label">总项目</span>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-accent stat-accent--scored"></div>
-          <div class="stat-body">
-            <span class="stat-num">{{ stats.scored }}</span>
-            <span class="stat-label">已评分</span>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-accent stat-accent--submitted"></div>
-          <div class="stat-body">
-            <span class="stat-num">{{ stats.submitted }}</span>
-            <span class="stat-label">已提交</span>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-accent stat-accent--abandoned"></div>
-          <div class="stat-body">
-            <span class="stat-num">{{ stats.abandoned }}</span>
-            <span class="stat-label">弃赛</span>
-          </div>
-        </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-accent stat-accent--submitted"></div>
+      <div class="stat-body">
+        <span class="stat-num">{{ stats.submitted }}</span>
+        <span class="stat-label">已提交</span>
       </div>
-      <div class="search-area">
-        <el-form label-width="100px">
-          <el-row>
-            <el-col :span="6">
-          <el-form-item label="节目名称" prop="keyword">
-            <div class="toolbar-search">
-            <el-input
-              v-model="store.keyword"
-              placeholder="搜索节目名称"
-              clearable
-              class="search-input"
-            />
-          </div>
-          </el-form-item>
-          </el-col>
-          <el-col :span="6">
-          <el-form-item label="节目编号" prop="keyword">
-            <div class="toolbar-search">
-            <el-input
-              v-model="store.keyword"
-              placeholder="搜索节目编码"
-              clearable
-              class="search-input"
-            />
-          </div>
-          </el-form-item>
-          </el-col>
-          <el-col :span="4">
-          <el-form-item label="学校" prop="school">
-          <div class="toolbar-search">
-            <el-input
-              v-model="store.school"
-              placeholder="搜索学校名称"
-              clearable
-              class="search-input"
-            />
-          </div>
-          </el-form-item>
-          </el-col>
-          <el-form-item>
-            <el-button type="primary" @click="refresh" style="margin-left: 40px;">搜索</el-button>
-          </el-form-item>
-          </el-row>
-        </el-form>
+    </div>
+    <div class="stat-card">
+      <div class="stat-accent stat-accent--abandoned"></div>
+      <div class="stat-body">
+        <span class="stat-num">{{ stats.abandoned }}</span>
+        <span class="stat-label">弃赛</span>
       </div>
-      <!-- 表格卡片 -->
-      <div class="table-card">
-        <!-- 标题行 + 筛选 + 导出 -->
-        <div class="table-toolbar">
-          <div class="table-toolbar-left">
-            <h2 class="section-title">评分列表</h2>
-            <span class="section-count">{{ filteredData.length }} 项</span>
-          </div>
-          <div class="table-toolbar-right">
-            <!-- 状态筛选 -->
-            <div class="filter-pills">
-              <button
-                :class="['pill', activeTab === 'all' && 'pill--active']"
-                @click="activeTab = 'all'"
-              >全部</button>
-              <button
-                :class="['pill', activeTab === 'scored' && 'pill--active']"
-                @click="activeTab = 'scored'"
-              >已评分</button>
-              <button
-                :class="['pill', activeTab === 'submitted' && 'pill--active']"
-                @click="activeTab = 'submitted'"
-              >已提交</button>
-              <button
-                :class="['pill', activeTab === 'abandoned' && 'pill--active']"
-                @click="activeTab = 'abandoned'"
-              >弃赛</button>
-            </div>
-            <el-button
-              type="primary"
-              size="default"
-              :loading="exporting"
-              :class="{ 'seal-btn': !exporting }"
-              @click="openExportDialog"
-            >
-              <span v-if="!exporting" class="seal-btn-inner">
-                <span>导出</span>
-              </span>
-              <span v-else>导出中…</span>
-            </el-button>
-          </div>
+    </div>
+  </div>
+  <div class="search-area">
+    <el-form label-width="100px">
+      <el-row>
+        <el-col :span="6">
+      <el-form-item label="节目名称" prop="keyword">
+        <div class="toolbar-search">
+        <el-input
+          v-model="store.keyword"
+          placeholder="搜索节目名称"
+          clearable
+          class="search-input"
+        />
+      </div>
+      </el-form-item>
+      </el-col>
+      <el-col :span="6">
+      <el-form-item label="节目编号" prop="keyword">
+        <div class="toolbar-search">
+        <el-input
+          v-model="store.keyword"
+          placeholder="搜索节目编码"
+          clearable
+          class="search-input"
+        />
+      </div>
+      </el-form-item>
+      </el-col>
+      <el-col :span="4">
+      <el-form-item label="学校" prop="school">
+      <div class="toolbar-search">
+        <el-input
+          v-model="store.school"
+          placeholder="搜索学校名称"
+          clearable
+          class="search-input"
+        />
+      </div>
+      </el-form-item>
+      </el-col>
+      <el-form-item>
+        <el-button type="primary" @click="refresh" style="margin-left: 40px;">搜索</el-button>
+      </el-form-item>
+      </el-row>
+    </el-form>
+  </div>
+  <!-- 表格卡片 -->
+  <div class="table-card">
+    <!-- 标题行 + 筛选 + 导出 -->
+    <div class="table-toolbar">
+      <div class="table-toolbar-left">
+        <h2 class="section-title">评分列表</h2>
+        <span class="section-count">{{ filteredData.length }} 项</span>
+      </div>
+      <div class="table-toolbar-right">
+        <!-- 状态筛选 -->
+        <div class="filter-pills">
+          <button
+            :class="['pill', activeTab === 'all' && 'pill--active']"
+            @click="activeTab = 'all'"
+          >全部</button>
+          <button
+            :class="['pill', activeTab === 'scored' && 'pill--active']"
+            @click="activeTab = 'scored'"
+          >已评分</button>
+          <button
+            :class="['pill', activeTab === 'submitted' && 'pill--active']"
+            @click="activeTab = 'submitted'"
+          >已提交</button>
+          <button
+            :class="['pill', activeTab === 'abandoned' && 'pill--active']"
+            @click="activeTab = 'abandoned'"
+          >弃赛</button>
         </div>
-
-        <!-- ═══ 分类筛选面板 ═══ -->
-        <div class="category-filter">
-          <div class="category-filter__header">
-            <span class="category-filter__title">大小类区分</span>
-            <span v-if="catActiveLabel" class="category-filter__clear" @click="clearCatFilter">清除筛选</span>
-          </div>
-          <div class="category-filter__body">
-            <!-- 全部 -->
-            <div
-              :class="['cat-item', 'cat-item--all', { 'cat-item--active': !catActiveLabel }]"
-              @click="clearCatFilter"
-            >
-              <span class="cat-item__name">全部</span>
-              <span class="cat-item__count">{{ allData.length }}</span>
-            </div>
-
-            <!-- 遍历分组 -->
-            <template v-for="group in CATEGORY_TREE" :key="group.label">
-              <!-- 分组标题行（点击展开/收起） -->
-              <div
-                :class="['cat-item', 'cat-item--group', {
-                  'cat-item--expanded': expandedGroup === group.label,
-                }]"
-                @click="toggleGroup(group.label)"
-              >
-                <span class="cat-item__arrow">
-                  {{ expandedGroup === group.label ? '▾' : '▸' }}
-                </span>
-                <span class="cat-item__name">{{ group.label }}</span>
-                <span class="cat-item__count">{{ getCatGroupCount(group) }}</span>
-              </div>
-
-              <!-- 子选项（展开时） -->
-              <div v-if="expandedGroup === group.label" class="cat-subs">
-                <div
-                  v-for="leaf in group.children"
-                  :key="leaf.label"
-                  :class="['cat-sub', {
-                    'cat-sub--active': catActiveLabel === `${group.label}›${leaf.label}`
-                  }]"
-                  @click="selectCatLeaf(group, leaf)"
-                >
-                  <span class="cat-sub__name">{{ leaf.label }}</span>
-                  <span class="cat-sub__count">{{ getCatLeafCount(leaf) }}</span>
-                </div>
-              </div>
-            </template>
-          </div>
-        </div>
-
-        <!-- 表格 -->
-        <el-table
-          :data="paginatedData"
-          border
-          size="small"
-          style="width:100%"
-          stripe
+        <el-button
+          type="primary"
+          size="default"
+          :loading="exporting"
+          :class="{ 'seal-btn': !exporting }"
+          @click="openExportDialog"
         >
-          <el-table-column type="index" label="序号" width="50" align="center" header-align="center" />
-          <el-table-column prop="code" label="节目编码" width="150" align="center" header-align="center">
-            <template #default="{ row }">
-              <code class="code-cell">{{ row.code }}</code>
-            </template>
-          </el-table-column>
-          <el-table-column prop="school" label="学校" width="100" align="center" header-align="center" />
-          <el-table-column prop="subCategory" label="类型" width="100" align="center" header-align="center" />
-          <el-table-column prop="group" label="组别" width="60" align="center" header-align="center" />
-          <el-table-column prop="name" label="节目名称" min-width="180" header-align="left">
-            <template #default="{ row }">
-              <span class="name-cell">{{ row.name }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="teamType" label="形式" width="60" align="center" header-align="center" />
-          <el-table-column label="分数" width="90" align="center" header-align="center">
-            <template #default="{ row }">
-              <span :class="['score-cell', row.status === 2 ? 'score-cell--final' : '', row.status === 1 ? 'score-cell--draft' : '']">
-                {{ formatScore(row.score) }}
-              </span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="award" label="奖项" width="100" align="center" header-align="center" />
-          <el-table-column label="状态" width="100" align="center" header-align="center">
-            <template #default="{ row }">
-              <span :class="['status-badge', `status-badge--${row.status}`]">
-                <span class="status-dot"></span>
-                {{ getStatusText(row.status) }}
-              </span>
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="200" align="center" header-align="center" fixed="right">
-            <template #default="{ row }">
-              <el-button type="primary" size="small" link @click="handleEdit(row)">查看</el-button>
-              <el-button type="danger" size="small" link @click="handleDelete(row)">
-                {{ row.status === -2 ? '恢复' : '弃赛' }}
-              </el-button>
-              <el-button type="warning" size="small" link @click="handleSameSchool(row)">
-                {{ row.status === -3 ? '同校恢复' : '同校弃赛' }}
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-
-        <!-- 分页 -->
-        <div class="table-pagination-wrap">
-          <el-pagination
-            v-model:current-page="page"
-            :page-size="pageSize"
-            :total="filteredData.length"
-            layout="total, prev, pager, next"
-            background
-            small
-            @current-change="handlePageChange"
-          />
-        </div>
+          <span v-if="!exporting" class="seal-btn-inner">
+            <span>导出</span>
+          </span>
+          <span v-else>导出中…</span>
+        </el-button>
       </div>
     </div>
 
-    <!-- 页脚 -->
-    <footer class="app-footer">
-      <span class="footer-text">© 四川省大学生艺术展演 · 评鉴录</span>
-    </footer>
+    <!-- ═══ 分类筛选面板 ═══ -->
+    <div class="category-filter">
+      <div class="category-filter__header">
+        <span class="category-filter__title">大小类区分</span>
+        <span v-if="catActiveLabel" class="category-filter__clear" @click="clearCatFilter">清除筛选</span>
+      </div>
+      <div class="category-filter__body">
+        <!-- 全部 -->
+        <div
+          :class="['cat-item', 'cat-item--all', { 'cat-item--active': !catActiveLabel }]"
+          @click="clearCatFilter"
+        >
+          <span class="cat-item__name">全部</span>
+          <span class="cat-item__count">{{ allData.length }}</span>
+        </div>
+
+        <!-- 遍历分组 -->
+        <template v-for="group in CATEGORY_TREE" :key="group.label">
+          <!-- 分组标题行（点击展开/收起） -->
+          <div
+            :class="['cat-item', 'cat-item--group', {
+              'cat-item--expanded': expandedGroup === group.label,
+            }]"
+            @click="toggleGroup(group.label)"
+          >
+            <span class="cat-item__arrow">
+              {{ expandedGroup === group.label ? '▾' : '▸' }}
+            </span>
+            <span class="cat-item__name">{{ group.label }}</span>
+            <span class="cat-item__count">{{ getCatGroupCount(group) }}</span>
+          </div>
+
+          <!-- 子选项（展开时） -->
+          <div v-if="expandedGroup === group.label" class="cat-subs">
+            <div
+              v-for="leaf in group.children"
+              :key="leaf.label"
+              :class="['cat-sub', {
+                'cat-sub--active': catActiveLabel === `${group.label}›${leaf.label}`
+              }]"
+              @click="selectCatLeaf(group, leaf)"
+            >
+              <span class="cat-sub__name">{{ leaf.label }}</span>
+              <span class="cat-sub__count">{{ getCatLeafCount(leaf) }}</span>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- 表格 -->
+    <el-table
+      :data="paginatedData"
+      border
+      size="small"
+      style="width:100%"
+      stripe
+    >
+      <el-table-column type="index" label="序号" width="50" align="center" header-align="center" />
+      <el-table-column prop="code" label="节目编码" width="150" align="center" header-align="center">
+        <template #default="{ row }">
+          <code class="code-cell">{{ row.code }}</code>
+        </template>
+      </el-table-column>
+      <el-table-column prop="school" label="学校" width="100" align="center" header-align="center" />
+      <el-table-column prop="subCategory" label="类型" width="100" align="center" header-align="center" />
+      <el-table-column prop="group" label="组别" width="60" align="center" header-align="center" />
+      <el-table-column prop="name" label="节目名称" min-width="180" header-align="left">
+        <template #default="{ row }">
+          <span class="name-cell">{{ row.name }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="teamType" label="形式" width="60" align="center" header-align="center" />
+      <el-table-column label="分数" width="90" align="center" header-align="center">
+        <template #default="{ row }">
+          <span :class="['score-cell', row.status === 2 ? 'score-cell--final' : '', row.status === 1 ? 'score-cell--draft' : '']">
+            {{ formatScore(row.score) }}
+          </span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="award" label="奖项" width="100" align="center" header-align="center" />
+      <el-table-column label="状态" width="100" align="center" header-align="center">
+        <template #default="{ row }">
+          <span :class="['status-badge', `status-badge--${row.status}`]">
+            <span class="status-dot"></span>
+            {{ getStatusText(row.status) }}
+          </span>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="200" align="center" header-align="center" fixed="right">
+        <template #default="{ row }">
+          <el-button type="primary" size="small" link @click="handleEdit(row)">查看</el-button>
+          <el-button type="danger" size="small" link @click="handleDelete(row)">
+            {{ row.status === -2 ? '恢复' : '弃赛' }}
+          </el-button>
+          <el-button type="warning" size="small" link @click="handleSameSchool(row)">
+            {{ row.status === -3 ? '同校恢复' : '同校弃赛' }}
+          </el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <!-- 分页 -->
+    <div class="table-pagination-wrap">
+      <el-pagination
+        v-model:current-page="page"
+        :page-size="pageSize"
+        :total="filteredData.length"
+        layout="total, prev, pager, next"
+        background
+        small
+        @current-change="handlePageChange"
+      />
+    </div>
   </div>
 
   <!-- ═══ 导出弹窗（组件） ═══ -->
@@ -518,136 +480,6 @@ function logout() {
 </template>
 
 <style scoped>
-.export-layout {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: var(--color-bg);
-  position: relative;
-}
-
-/* ═══ 背景水印 ═══ */
-.bg-watermark {
-  position: fixed;
-  font-family: var(--font-display);
-  font-weight: 700;
-  color: var(--color-accent-subtle, rgba(217,68,68,0.035));
-  user-select: none;
-  pointer-events: none;
-  z-index: 0;
-  font-size: clamp(200px, 30vw, 400px);
-  bottom: -8%;
-  right: -4%;
-  transform: rotate(-8deg);
-  opacity: 0.5;
-  letter-spacing: 0;
-}
-
-/* ═══ 顶栏 ═══ */
-.export-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 28px;
-  height: 56px;
-  background: var(--color-card);
-  border-bottom: 1px solid var(--color-border);
-  flex-shrink: 0;
-  position: relative;
-  z-index: 1;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.header-brand-icon {
-  position: relative;
-}
-
-.header-logo {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  display: block;
-}
-
-.header-brand {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.header-title {
-  font-family: var(--font-display);
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--color-text);
-  letter-spacing: 2px;
-  line-height: 1.3;
-}
-
-.header-subtitle {
-  font-size: 11px;
-  color: var(--color-text-muted);
-  letter-spacing: 2px;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.header-role {
-  font-size: 12px;
-  color: var(--color-text-muted);
-  letter-spacing: 0.5px;
-}
-
-.header-divider {
-  color: var(--color-border);
-  font-size: 14px;
-}
-
-.header-user {
-  font-size: 14px;
-  color: var(--color-text);
-  font-weight: 500;
-}
-
-.logout-btn {
-  background: none;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  padding: 5px 14px;
-  font-size: 13px;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.2s;
-}
-
-.logout-btn:hover {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-  background: var(--color-accent-light);
-}
-
-/* ═══ 内容区 ═══ */
-.export-body {
-  flex: 1;
-  padding: 28px;
-  overflow-y: auto;
-  max-width: 1280px;
-  width: 100%;
-  margin: 0 auto;
-  box-sizing: border-box;
-  position: relative;
-  z-index: 1;
-}
 .toolbar {
   display: flex;
   align-items: center;
@@ -1111,23 +943,6 @@ function logout() {
   color: #fff;
 }
 
-/* ═══ 页脚 ═══ */
-.app-footer {
-  flex-shrink: 0;
-  text-align: center;
-  padding: 12px 0;
-  background: var(--color-card);
-  border-top: 1px solid var(--color-border-light);
-  position: relative;
-  z-index: 1;
-}
-
-.footer-text {
-  font-size: 12px;
-  color: var(--color-text-muted);
-  letter-spacing: 1px;
-}
-
 /* ═══ 展开动画 ═══ */
 @keyframes slide-down {
   from { opacity: 0; transform: translateY(-6px); }
@@ -1136,14 +951,11 @@ function logout() {
 
 /* ═══ 响应式 ═══ */
 @media (max-width: 1024px) {
-  .export-body { padding: 20px; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .table-toolbar-right { width: 100%; justify-content: flex-end; }
 }
 
 @media (max-width: 768px) {
-  .export-header { padding: 0 16px; }
-  .export-body { padding: 16px; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .stat-num { font-size: 26px; }
   .stat-body { padding: 14px 12px; }
@@ -1154,16 +966,10 @@ function logout() {
   .filter-pills { flex: 1; }
   .pill { flex: 1; text-align: center; }
   .seal-btn { width: 100%; justify-content: center; }
-
-  .header-role { display: none; }
-  .header-divider { display: none; }
 }
 
 @media (max-width: 480px) {
   .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
   .stat-num { font-size: 22px; }
-  .bg-watermark { display: none; }
-  .app-footer { padding: 10px 0; }
-  .footer-text { font-size: 11px; }
 }
 </style>

@@ -22,9 +22,16 @@ const router = createRouter({
     },
     {
       path: '/export',
-      name: 'export',
-      component: () => import('../views/Export/ExportView/ExportView.vue'),
+      component: () => import('../views/Export/ExportNavbar/ExportNavbar.vue'),
       meta: { requiresAuth: true },
+      redirect: '/export/list',
+      children: [
+        {
+          path: 'list',
+          name: 'export',
+          component: () => import('../views/Export/ExportView/ExportView.vue'),
+        },
+      ],
     },
     {
       path: '/',
