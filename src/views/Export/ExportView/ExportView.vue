@@ -29,85 +29,32 @@ async function reloadPrograms() {
   store.setPrograms(programsRes.list)
 }
 
-/* ── 静态分类筛选面板 ── */
-interface CatLeaf {
-  label: string
-  keyword: string
-}
+/* ── 大类下拉选项（前端写死6个大类） ── */
+const filterCategory = ref('')
+const majorCategories = ['艺术表演类（集体项目）', '艺术表演类（个人项目）', '学生艺术作品类', '高校校长作品类', '艺术实践工作坊', '优秀成果申报']
+
+/* ── 导出弹窗分类树 ── */
 interface CatGroup {
   label: string
-  teamType?: string        /* 集体 / 个人 */
-  children: CatLeaf[]
+  teamType?: string
+  children: { label: string; keyword: string }[]
 }
-const CATEGORY_TREE: CatGroup[] = [
-  {
-    label: '艺术表演类（集体项目）',
-    teamType: '集体',
-    children: [
-      { label: '声乐作品报名', keyword: '声乐' },
-      { label: '器乐作品报名', keyword: '器乐' },
-      { label: '舞蹈作品报名', keyword: '舞蹈' },
-      { label: '戏剧（戏曲）作品报名', keyword: '戏剧' },
-      { label: '朗诵作品报名', keyword: '朗诵' },
-    ],
-  },
-  {
-    label: '艺术表演类（个人项目）',
-    teamType: '个人',
-    children: [
-      { label: '声乐作品报名', keyword: '声乐' },
-      { label: '器乐作品报名', keyword: '器乐' },
-      { label: '舞蹈作品报名', keyword: '舞蹈' },
-      { label: '戏曲作品报名', keyword: '戏曲' },
-      { label: '朗诵作品报名', keyword: '朗诵' },
-    ],
-  },
-  {
-    label: '学生艺术作品类',
-    children: [
-      { label: '绘画作品报名', keyword: '绘画' },
-      { label: '书法作品报名', keyword: '书法' },
-      { label: '篆刻作品报名', keyword: '篆刻' },
-      { label: '摄影作品报名', keyword: '摄影' },
-      { label: '设计作品报名', keyword: '设计' },
-      { label: '影视作品报名', keyword: '影视' },
-    ],
-  },
-  {
-    label: '高校校长作品类',
-    children: [
-      { label: '绘画作品报名', keyword: '绘画' },
-      { label: '书法作品报名', keyword: '书法' },
-      { label: '篆刻作品报名', keyword: '篆刻' },
-      { label: '摄影作品报名', keyword: '摄影' },
-    ],
-  },
-  {
-    label: '艺术实践工作坊',
-    children: [
-      { label: '艺术实践工作坊', keyword: '工作坊' },
-    ],
-  },
-  {
-    label: '优秀成果申报',
-    children: [
-      { label: '优秀成果申报', keyword: '美育改革创新' },
-    ],
-  },
+const EXPORT_CATEGORIES: CatGroup[] = [
+  { label: '艺术表演类（集体项目）' },
+  { label: '艺术表演类（个人项目）' },
+  { label: '学生艺术作品类'},
+  { label: '高校校长作品类'},
+  { label: '艺术实践工作坊'},
+  { label: '优秀成果申报'},
 ]
-
-const expandedGroup = ref('')          /* 当前展开的分组 */
-const catKeyword = ref('')            /* 分类关键词筛选 */
-const catTeamType = ref('')          /* 集体/个人筛选 */
-const catActiveLabel = ref('')       /* 当前选中的选项文字（用于高亮） */
 
 /* 所有数据 */
 const allData = computed(() => store.allPrograms)
 
-/* 按关键词 + 状态标签 + 分类面板 过滤 */
+/* 按关键词 + 大类 + 状态标签 过滤 */
 const filteredData = computed(() => {
   let list = allData.value
-  /* 关键词搜索 — 后端已处理，这里做本地补充过滤 */
+  /* 关键词搜索 */
   if (store.keyword) {
     const kw = store.keyword.toLowerCase()
     list = list.filter(d => d.code.toLowerCase().includes(kw) || d.name.toLowerCase().includes(kw))
@@ -117,12 +64,28 @@ const filteredData = computed(() => {
     const sw = store.school.toLowerCase()
     list = list.filter(d => d.school.toLowerCase().includes(sw))
   }
-  /* 分类面板筛选 */
-  if (catKeyword.value) {
-    list = list.filter(d => d.name.includes(catKeyword.value))
-  }
-  if (catTeamType.value) {
-    list = list.filter(d => d.teamType === catTeamType.value)
+  /* 大类筛选 */
+  if (filterCategory.value) {
+    switch (filterCategory.value) {
+      case '集体':
+        list = list.filter(d => d.majorCategory?.includes('艺术表演') && d.teamType === '集体')
+        break
+      case '个人':
+        list = list.filter(d => d.majorCategory?.includes('艺术表演') && d.teamType === '个人')
+        break
+      case '学生作品':
+        list = list.filter(d => d.majorCategory?.includes('艺术作品') && d.group !== '校长')
+        break
+      case '校长作品':
+        list = list.filter(d => d.majorCategory?.includes('艺术作品') && d.group === '校长')
+        break
+      case '工作坊':
+        list = list.filter(d => d.majorCategory?.includes('工作坊'))
+        break
+      case '优秀成果':
+        list = list.filter(d => d.majorCategory?.includes('美育') || d.majorCategory?.includes('优秀成果'))
+        break
+    }
   }
   /* 状态标签 */
   switch (activeTab.value) {
@@ -148,7 +111,7 @@ function handlePageChange(p: number) {
 
 /* 筛选条件变化时重置到第一页 */
 watch(
-  [catKeyword, catTeamType, activeTab, () => store.keyword],
+  [filterCategory, activeTab, () => store.keyword, () => store.school],
   () => { page.value = 1 }
 )
 
@@ -175,37 +138,6 @@ function getStatusText(status: number | string): string {
 function formatScore(score: number | null): string {
   if (score === null || score === undefined) return '—'
   return Number(score).toFixed(1)
-}
-
-/* ── 分类面板交互 ── */
-function toggleGroup(label: string) {
-  expandedGroup.value = expandedGroup.value === label ? '' : label
-}
-
-function selectCatLeaf(group: CatGroup, leaf: CatLeaf) {
-  catKeyword.value = leaf.keyword
-  catTeamType.value = group.teamType || ''
-  catActiveLabel.value = `${group.label}›${leaf.label}`
-  expandedGroup.value = group.label
-}
-
-function clearCatFilter() {
-  catKeyword.value = ''
-  catTeamType.value = ''
-  catActiveLabel.value = ''
-  expandedGroup.value = ''
-}
-
-
-function getCatGroupCount(group: CatGroup): number {
-  return allData.value.filter(d => {
-    if (group.teamType && d.teamType !== group.teamType) return false
-    return group.children.some(c => d.name.includes(c.keyword))
-  }).length
-}
-
-function getCatLeafCount(leaf: CatLeaf): number {
-  return allData.value.filter(d => d.name.includes(leaf.keyword)).length
 }
 
 /* ── 导出弹窗 ── */
@@ -270,7 +202,7 @@ async function handleDelete(row: ProgramWithScore) {
       </div>
       </el-form-item>
       </el-col>
-      <el-col :span="8">
+      <el-col :span="6">
       <el-form-item label="学校" prop="school">
       <div class="toolbar-search">
         <el-input
@@ -279,6 +211,25 @@ async function handleDelete(row: ProgramWithScore) {
           clearable
           class="search-input"
         />
+      </div>
+      </el-form-item>
+      </el-col>
+      <el-col :span="8">
+      <el-form-item label="节目类型" prop="category">
+      <div class="toolbar-search">
+        <el-select
+          v-model="filterCategory"
+          placeholder="全部大类"
+          clearable
+          class="search-input"
+        >
+          <el-option
+            v-for="cat in majorCategories"
+            :key="cat"
+            :label="cat"
+            :value="cat"
+          />
+        </el-select>
       </div>
       </el-form-item>
       </el-col>
@@ -320,61 +271,10 @@ async function handleDelete(row: ProgramWithScore) {
           :class="{ 'seal-btn': !exporting }"
           @click="openExportDialog"
         >
-          <span v-if="!exporting" class="seal-btn-inner">
+          <span class="seal-btn-inner">
             <span>导出</span>
           </span>
-          <span v-else>导出中…</span>
         </el-button>
-      </div>
-    </div>
-
-    <!-- ═══ 分类筛选面板 ═══ -->
-    <div class="category-filter">
-      <div class="category-filter__header">
-        <span class="category-filter__title">大小类区分</span>
-        <span v-if="catActiveLabel" class="category-filter__clear" @click="clearCatFilter">清除筛选</span>
-      </div>
-      <div class="category-filter__body">
-        <!-- 全部 -->
-        <div
-          :class="['cat-item', 'cat-item--all', { 'cat-item--active': !catActiveLabel }]"
-          @click="clearCatFilter"
-        >
-          <span class="cat-item__name">全部</span>
-          <span class="cat-item__count">{{ allData.length }}</span>
-        </div>
-
-        <!-- 遍历分组 -->
-        <template v-for="group in CATEGORY_TREE" :key="group.label">
-          <!-- 分组标题行（点击展开/收起） -->
-          <div
-            :class="['cat-item', 'cat-item--group', {
-              'cat-item--expanded': expandedGroup === group.label,
-            }]"
-            @click="toggleGroup(group.label)"
-          >
-            <span class="cat-item__arrow">
-              {{ expandedGroup === group.label ? '▾' : '▸' }}
-            </span>
-            <span class="cat-item__name">{{ group.label }}</span>
-            <span class="cat-item__count">{{ getCatGroupCount(group) }}</span>
-          </div>
-
-          <!-- 子选项（展开时） -->
-          <div v-if="expandedGroup === group.label" class="cat-subs">
-            <div
-              v-for="leaf in group.children"
-              :key="leaf.label"
-              :class="['cat-sub', {
-                'cat-sub--active': catActiveLabel === `${group.label}›${leaf.label}`
-              }]"
-              @click="selectCatLeaf(group, leaf)"
-            >
-              <span class="cat-sub__name">{{ leaf.label }}</span>
-              <span class="cat-sub__count">{{ getCatLeafCount(leaf) }}</span>
-            </div>
-          </div>
-        </template>
       </div>
     </div>
 
@@ -444,7 +344,7 @@ async function handleDelete(row: ProgramWithScore) {
   <!-- ═══ 导出弹窗（组件） ═══ -->
   <ExportDialog
     v-model:visible="exportDialogVisible"
-    :category-tree="CATEGORY_TREE"
+    :category-tree="EXPORT_CATEGORIES"
   />
 
   <!-- ═══ 详情弹窗（组件） ═══ -->
