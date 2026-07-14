@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ref, watch } from 'vue'
 import type { ProgramWithScore } from '@/stores/score'
-import { useScoreStore } from '@/stores/score'
-
-const store = useScoreStore()
+import { fetchProgramDetail } from './DetailDialog.js'
 
 const props = defineProps<{
   visible: boolean
@@ -14,12 +12,53 @@ const emit = defineEmits<{
   (e: 'update:visible', v: boolean): void
 }>()
 
+interface ReviewerScore {
+  reviewer_id: number
+  reviewer_name: string
+  reviewer_school: string
+  score: number | null
+  status: string | null
+  is_excluded: boolean
+  exclude_reason: string | null
+  submitted_at: string | null
+}
+
+const loading = ref(false)
+const detail = ref<{
+  program_code: string
+  program_name: string
+  major_category: string
+  sub_category: string
+  detail_category: string
+  school_name: string
+  program_status: string
+  exempt_reason: string | null
+  scores: ReviewerScore[]
+} | null>(null)
+
+watch(() => [props.visible, props.program], async ([vis, prog]) => {
+  if (vis && prog?.id) {
+    loading.value = true
+    detail.value = await fetchProgramDetail(prog.id)
+    loading.value = false
+  }
+})
+
 function formatScore(score: number | null): string {
   if (score === null || score === undefined) return '—'
   return Number(score).toFixed(1)
 }
 
-function getStatusText(status: number): string {
+function getStatusText(status: number | string): string {
+  if (typeof status === 'string') {
+    const map: Record<string, string> = {
+      pending: '待评分',
+      partial: '部分已评',
+      completed: '已完成',
+      exempt: '免评',
+    }
+    return map[status] || status
+  }
   switch (status) {
     case 0:   return '未评分'
     case 1:   return '已评分'
@@ -29,122 +68,87 @@ function getStatusText(status: number): string {
     default:  return '—'
   }
 }
-
-function handleResetJudge(judgeName: string) {
-  if (!props.program) return
-  ElMessageBox.confirm(
-    `确定将「${judgeName}」的评分重置为未评吗？`,
-    '重新评分',
-    { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
-  ).then(() => {
-    store.resetJudgeScore(props.program!.code, judgeName)
-    ElMessage.success(`已重置 ${judgeName} 的评分`)
-  }).catch(() => {})
-}
 </script>
 
 <template>
   <el-dialog
     :model-value="visible"
     title="项目详情"
-    width="560px"
+    width="600px"
     top="10vh"
     :close-on-click-modal="false"
     append-to-body
     @update:model-value="emit('update:visible', $event)"
   >
-    <div v-if="program" class="detail-body">
+    <div v-if="program && detail" class="detail-body" v-loading="loading">
       <!-- 基本信息 -->
       <div class="detail-section">
         <h3 class="detail-section-title">基本信息</h3>
         <div class="detail-grid">
           <div class="detail-field">
             <span class="detail-label">项目编码</span>
-            <span class="detail-value mono">{{ program.code }}</span>
+            <span class="detail-value mono">{{ detail.program_code }}</span>
           </div>
           <div class="detail-field">
             <span class="detail-label">项目名称</span>
-            <span class="detail-value">{{ program.name }}</span>
+            <span class="detail-value">{{ detail.program_name }}</span>
           </div>
           <div class="detail-field">
             <span class="detail-label">学校</span>
-            <span class="detail-value">{{ program.school }}</span>
+            <span class="detail-value">{{ detail.school_name }}</span>
           </div>
           <div class="detail-field">
             <span class="detail-label">类别</span>
-            <span class="detail-value">{{ program.majorCategory }} · {{ program.subCategory }}</span>
-          </div>
-          <div class="detail-field">
-            <span class="detail-label">组别</span>
-            <span class="detail-value">{{ program.group }}</span>
-          </div>
-          <div class="detail-field">
-            <span class="detail-label">形式</span>
-            <span class="detail-value">{{ program.teamType }}</span>
-          </div>
-          <div class="detail-field">
-            <span class="detail-label">人数</span>
-            <span class="detail-value">{{ program.participantCount }} 人</span>
+            <span class="detail-value">{{ detail.major_category }} · {{ detail.sub_category }}</span>
           </div>
           <div class="detail-field">
             <span class="detail-label">状态</span>
             <span class="detail-value">
-              <span :class="['detail-status', `detail-status--${program.status}`]">
-                {{ getStatusText(program.status) }}
+              <span :class="['detail-status', `detail-status--${detail.program_status}`]">
+                {{ getStatusText(detail.program_status) }}
               </span>
             </span>
           </div>
-          <div v-if="program.award" class="detail-field">
-            <span class="detail-label">奖项</span>
-            <span class="detail-value">{{ program.award }}</span>
+          <div v-if="detail.exempt_reason" class="detail-field">
+            <span class="detail-label">免评原因</span>
+            <span class="detail-value">{{ detail.exempt_reason }}</span>
           </div>
         </div>
       </div>
 
-      <!-- 评委评分 -->
+      <!-- 专家评分明细 -->
       <div class="detail-section">
         <h3 class="detail-section-title">
-          评委评分
-          <span class="detail-section-count">{{ program.judges.length }} 位评委</span>
+          专家评分明细
+          <span class="detail-section-count">{{ detail.scores.length }} 位专家</span>
         </h3>
 
-        <div v-if="program.judges.length === 0" class="detail-empty">
-          暂无评委数据
+        <div v-if="detail.scores.length === 0" class="detail-empty">
+          暂无评分数据
         </div>
 
         <div v-else class="detail-judges">
           <div
-            v-for="(judge, idx) in program.judges"
-            :key="idx"
-            class="detail-judge-row"
+            v-for="s in detail.scores"
+            :key="s.reviewer_id"
+            :class="['detail-judge-row', { 'detail-judge-row--excluded': s.is_excluded }]"
           >
-            <div class="detail-judge-avatar">{{ judge.name.charAt(0) }}</div>
+            <div class="detail-judge-avatar">{{ s.reviewer_name.charAt(0) }}</div>
             <div class="detail-judge-info">
-              <span class="detail-judge-name">{{ judge.name }}</span>
-              <span class="detail-judge-score">
-                评分：<strong :class="judge.score !== null ? 'detail-judge-num' : 'detail-judge-null'">
-                  {{ formatScore(judge.score) }}
-                </strong>
+              <span class="detail-judge-name">
+                {{ s.reviewer_name }}
+                <span v-if="s.is_excluded" class="detail-judge-tag">排除</span>
               </span>
+              <span class="detail-judge-meta">{{ s.reviewer_school }}</span>
             </div>
-            <el-button
-              size="small"
-              text
-              type="warning"
-              class="detail-judge-btn"
-              @click="handleResetJudge(judge.name)"
-            >
-              重新评分
-            </el-button>
+            <div class="detail-judge-right">
+              <strong :class="s.score !== null ? 'detail-judge-num' : 'detail-judge-null'">
+                {{ formatScore(s.score) }}
+              </strong>
+              <span class="detail-judge-status">{{ s.status === 'submitted' ? '已提交' : s.status === 'draft' ? '草稿' : '—' }}</span>
+            </div>
           </div>
         </div>
-      </div>
-
-      <!-- 总评分 -->
-      <div class="detail-total">
-        <span class="detail-total-label">综合评分</span>
-        <span class="detail-total-score">{{ formatScore(program.score) }}</span>
-        <span class="detail-total-award" v-if="program.award">{{ program.award }}</span>
       </div>
     </div>
 
@@ -163,7 +167,6 @@ function handleResetJudge(judgeName: string) {
   padding: 0 4px;
 }
 
-/* ── 区块 ── */
 .detail-section {
   margin-bottom: 20px;
 }
@@ -187,7 +190,6 @@ function handleResetJudge(judgeName: string) {
   color: var(--color-text-muted);
 }
 
-/* ── 信息网格 ── */
 .detail-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -217,7 +219,6 @@ function handleResetJudge(judgeName: string) {
   font-size: 12.5px;
 }
 
-/* ── 状态标签 ── */
 .detail-status {
   display: inline-block;
   padding: 1px 10px;
@@ -230,8 +231,11 @@ function handleResetJudge(judgeName: string) {
 .detail-status--2  { background: #E8F5EE; color: #2E7D5B; }
 .detail-status--\-2 { background: #FFF0ED; color: #C0392B; }
 .detail-status--\-3 { background: #F0EDF5; color: #7B6FA0; }
+.detail-status--pending   { background: #F5F5F5; color: #999; }
+.detail-status--partial   { background: #EBF3FA; color: #3A7AB5; }
+.detail-status--completed { background: #E8F5EE; color: #2E7D5B; }
+.detail-status--exempt    { background: #FFF0ED; color: #C0392B; }
 
-/* ── 空状态 ── */
 .detail-empty {
   text-align: center;
   padding: 20px 0;
@@ -239,7 +243,6 @@ function handleResetJudge(judgeName: string) {
   color: var(--color-text-muted);
 }
 
-/* ── 评委列表 ── */
 .detail-judges {
   display: flex;
   flex-direction: column;
@@ -254,11 +257,12 @@ function handleResetJudge(judgeName: string) {
   border-radius: var(--radius-sm);
   background: var(--color-bg);
   border: 1px solid var(--color-border-light);
-  transition: box-shadow 0.15s;
 }
 
-.detail-judge-row:hover {
-  box-shadow: var(--shadow-sm);
+.detail-judge-row--excluded {
+  opacity: 0.6;
+  border-color: #FAD1D1;
+  background: #FFF8F8;
 }
 
 .detail-judge-avatar {
@@ -279,70 +283,56 @@ function handleResetJudge(judgeName: string) {
   display: flex;
   flex-direction: column;
   gap: 1px;
+  flex: 1;
 }
 
 .detail-judge-name {
   font-size: 13px;
   font-weight: 500;
   color: var(--color-text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.detail-judge-score {
-  font-size: 12px;
+.detail-judge-tag {
+  font-size: 10px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: #FFF0ED;
+  color: #C0392B;
+  font-weight: 500;
+}
+
+.detail-judge-meta {
+  font-size: 11.5px;
   color: var(--color-text-muted);
-  letter-spacing: 0.3px;
+}
+
+.detail-judge-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
 }
 
 .detail-judge-num {
-  color: var(--color-accent);
   font-family: var(--font-mono);
+  color: var(--color-accent);
   font-weight: 600;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .detail-judge-null {
   color: #BBB;
   font-weight: 400;
-}
-
-.detail-judge-btn {
-  flex-shrink: 0;
-  margin-left: auto;
-}
-
-/* ── 综合评分条 ── */
-.detail-total {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  padding: 14px;
-  border-radius: var(--radius-md);
-  background: var(--color-accent-light);
-  border: 1px solid var(--color-border-light);
-}
-
-.detail-total-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-text-muted);
-  letter-spacing: 0.5px;
-}
-
-.detail-total-score {
-  font-family: var(--font-mono);
-  font-size: 26px;
-  font-weight: 700;
-  color: var(--color-accent);
-}
-
-.detail-total-award {
   font-size: 14px;
-  font-weight: 600;
-  color: var(--color-jade);
-  padding: 2px 12px;
-  border-radius: 12px;
-  background: var(--color-card);
+}
+
+.detail-judge-status {
+  font-size: 11px;
+  color: var(--color-text-muted);
 }
 
 .detail-footer {

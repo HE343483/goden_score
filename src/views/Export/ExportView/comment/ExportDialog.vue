@@ -28,7 +28,7 @@ const allData = computed(() => store.allPrograms)
 const exporting = ref(false)
 
 /* ── 状态筛选 ── */
-const exportStatus = ref<'all' | 'scored' | 'submitted' | 'abandoned'>('all')
+const exportStatus = ref<'all' | 'scored' | 'completed' | 'exempt'>('all')
 
 /* ── 展开状态（默认全关） ── */
 const expandedSet = ref<Set<string>>(new Set())
@@ -105,9 +105,9 @@ const exportData = computed(() => {
   })
   /* 状态过滤 */
   switch (exportStatus.value) {
-    case 'scored':    list = list.filter(d => d.status >= 1); break
-    case 'submitted': list = list.filter(d => d.status === 2); break
-    case 'abandoned': list = list.filter(d => d.status === -2); break
+    case 'scored':    list = list.filter(d => d.status === 'partial' || d.status === 'completed'); break
+    case 'completed': list = list.filter(d => d.status === 'completed'); break
+    case 'exempt':    list = list.filter(d => d.status === 'exempt'); break
   }
   return list
 })
@@ -118,7 +118,16 @@ function formatScore(score: number | null): string {
   return Number(score).toFixed(1)
 }
 
-function getStatusText(status: number): string {
+function getStatusText(status: number | string): string {
+  if (typeof status === 'string') {
+    const map: Record<string, string> = {
+      pending: '待评分',
+      partial: '部分已评',
+      completed: '已完成',
+      exempt: '免评',
+    }
+    return map[status] || status
+  }
   switch (status) {
     case 0:   return '未评分'
     case 1:   return '已评分'
@@ -132,9 +141,9 @@ function getStatusText(status: number): string {
 function getLeafCount(leaf: CatLeaf): number {
   let list = allData.value.filter(d => d.name.includes(leaf.keyword))
   switch (exportStatus.value) {
-    case 'scored':    list = list.filter(d => d.status >= 1); break
-    case 'submitted': list = list.filter(d => d.status === 2); break
-    case 'abandoned': list = list.filter(d => d.status === -2); break
+    case 'scored':    list = list.filter(d => d.status === 'partial' || d.status === 'completed'); break
+    case 'completed': list = list.filter(d => d.status === 'completed'); break
+    case 'exempt':    list = list.filter(d => d.status === 'exempt'); break
   }
   return list.length
 }
@@ -231,13 +240,13 @@ function doExport() {
           @click="exportStatus = 'scored'"
         >已评分</span>
         <span
-          :class="['export-status-pill', { 'export-status-pill--on': exportStatus === 'submitted' }]"
-          @click="exportStatus = 'submitted'"
-        >已提交</span>
+          :class="['export-status-pill', { 'export-status-pill--on': exportStatus === 'completed' }]"
+          @click="exportStatus = 'completed'"
+        >已完成</span>
         <span
-          :class="['export-status-pill', { 'export-status-pill--on': exportStatus === 'abandoned' }]"
-          @click="exportStatus = 'abandoned'"
-        >弃赛</span>
+          :class="['export-status-pill', { 'export-status-pill--on': exportStatus === 'exempt' }]"
+          @click="exportStatus = 'exempt'"
+        >免评</span>
       </div>
 
       <!-- 分类列表（默认收起） -->

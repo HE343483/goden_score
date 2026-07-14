@@ -314,7 +314,7 @@
 }
 
 .status-select {
-  width: 130px;
+  width: 180px;
 }
 
 .selected-count {
@@ -415,6 +415,25 @@
   font-weight: 500;
   color: var(--color-text);
   letter-spacing: 0.3px;
+}
+
+.score-cell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.score-text {
+  cursor: pointer;
+  color: var(--color-text);
+  padding: 2px 8px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.score-text:hover {
+  background: var(--color-bg);
+  color: var(--color-accent);
 }
 
 .cat-tag {

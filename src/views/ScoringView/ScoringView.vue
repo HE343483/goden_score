@@ -17,6 +17,9 @@ const multipleTableRef = ref()
 const sidebarOpen = ref(false)
 const isTablet = ref(false)
 
+/* 控制分数列的输入框切换 */
+const editingCode = ref<string | null>(null)
+
 const paginatedData = ref<ProgramWithScore[]>([])
 
 function checkScreen() {
@@ -73,58 +76,82 @@ watch(paginatedData, (list) => {
   store.editingScores = { ...scores, ...store.editingScores }
 }, { immediate: true })
 
-async function submitScore(row: ProgramWithScore) {
-  const score = store.editingScores[row.code]
-  if (score === null || score === undefined) {
-    return ElMessage.error('请输入分数')
-  }
-  if (score < 0 || score > 100) {
-    return ElMessage.error('分数应在 0-100 之间')
-  }
-  await saveScores([{ program_id: row.id, score: Number(score) }])
-  store.submitScore(row.code, Number(score))
-  ElMessage.success(`评分成功：${Number(score).toFixed(1)} 分`)
-  total.value = filterData()
-}
-
-function markAbandoned(row: ProgramWithScore) {
-  ElMessageBox.confirm(
-    `确定将 "${row.name}" 标记为弃赛吗？`,
-    '弃赛确认',
-    { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
-  ).then(() => {
-    store.markAbandoned(row.code)
-    ElMessage.success('已标记为弃赛')
-    total.value = filterData()
-  }).catch(() => {})
-}
-
-function requestRescore(row: ProgramWithScore) {
-  ElMessageBox.confirm(
-    '确定重新评分吗？当前评分将被打回，需要重新评审。',
-    '重新评分',
-    { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
-  ).then(() => {
-    store.requestRescore(row.code)
-    ElMessage.success('已申请重新评分，请重新评审')
-    total.value = filterData()
-  }).catch(() => {})
-}
-
-async function submitSingle(row: ProgramWithScore) {
-  ElMessageBox.confirm(
-    `确认提交「${row.name}」的评分吗？提交后不可修改，分数为 ${row.score} 分。`,
-    '确认提交',
-    { confirmButtonText: '确定', cancelButtonText: '取消', type: 'info' }
-  ).then(async () => {
-    await submitScores([{ program_id: row.id, score: row.score }])
-    store.submitToFinal(row.code)
-    ElMessage.success('提交成功：' + row.name)
-    total.value = filterData()
-  }).catch(() => {})
-}
 function onSelectionChange(selection: ProgramWithScore[]) {
   store.selectedCodes = selection.map(s => s.code)
+}
+
+function startEdit(row: ProgramWithScore) {
+  editingCode.value = row.code
+  if (row.status === 1 && row.score !== null && row.score !== undefined) {
+    store.editingScores[row.code] = row.score
+  }
+}
+
+function checkSelectable(row: ProgramWithScore): boolean {
+  // status 0: 编辑中的分数必须有效且 > 0; status 1: 已有保存的分数且 > 0
+  if (row.status === 0) {
+    const s = store.editingScores[row.code]
+    return s !== null && s !== undefined && s > 0 && s <= 100
+  }
+  if (row.status === 1) return row.score !== null && row.score !== undefined && row.score > 0
+  return false
+}
+
+async function reloadPrograms() {
+  try {
+    const { list, total: totalCount } = await fetchExpertPrograms({ limit: 100 })
+    store.setPrograms(list)
+    total.value = totalCount
+    filterData()
+  } catch { /* 拦截器已弹提示 */ }
+}
+
+async function onScoreBlur(row: ProgramWithScore) {
+  editingCode.value = null
+  const val = store.editingScores[row.code]
+  if (val === null || val === undefined) return
+  // 失焦后自动保存
+  await saveScores({ items: [{ program_id: row.id as number, score: val }] })
+  ElMessage.success('已保存：' + row.name + ' ' + val + '分')
+  // 重新拉取列表，同步后端最新状态
+  await reloadPrograms()
+}
+
+async function submitAllSelected() {
+  const table = multipleTableRef.value
+  if (!table) return
+  const selected = table.getSelectionRows() as ProgramWithScore[]
+  if (selected.length === 0) {
+    return ElMessage.warning('请先勾选要提交的项目')
+  }
+  // 只提交有效的（有分数的）
+  const items: { program_id: number; score: number }[] = []
+  selected.forEach(row => {
+    if (row.status === 0) {
+      const s = store.editingScores[row.code]
+      if (s !== null && s !== undefined) {
+        items.push({ program_id: row.id, score: Number(s) })
+      }
+    } else if (row.status === 1) {
+      items.push({ program_id: row.id, score: row.score! })
+    }
+  })
+  if (items.length === 0) {
+    return ElMessage.warning('所选项目中没有可提交的分数')
+  }
+  ElMessageBox.confirm(
+    `确认提交 ${items.length} 个节目的评分吗？提交后不可修改。`,
+    '批量提交',
+    { confirmButtonText: '确定', cancelButtonText: '取消', type: 'info' }
+  ).then(async () => {
+    await submitScores({ items })
+    items.forEach(it => {
+      const row = store.allPrograms.find(p => p.id === it.program_id)
+      if (row) store.submitToFinal(row.code)
+    })
+    ElMessage.success(`已提交 ${items.length} 个评分`)
+    total.value = filterData()
+  }).catch(() => {})
 }
 
 async function logout() {
@@ -161,14 +188,7 @@ function closeSidebar() {
 
 onMounted(async () => {
   store.loading = true
-  try {
-    const { list, total: totalCount } = await fetchExpertPrograms({ limit: 100 })
-    store.setPrograms(list)
-    total.value = totalCount
-    filterData()
-  } catch {
-    // 拦截器已弹提示
-  }
+  await reloadPrograms()
   checkScreen()
   window.addEventListener('resize', checkScreen)
 })
@@ -251,10 +271,10 @@ onUnmounted(() => {
       <!-- 内容区 -->
       <div class="content-area">
         <!-- 工具栏 -->
-        <div class="toolbar search-area">
+        <div class="search-area">
           <el-form :model="store" class="search-form" label-width="90px">
-            <el-row :gutter="29" min-width="1200px">
-              <el-col :span="8">
+            <el-row :gutter="24" style="min-width: 1200px">
+              <el-col :span="6">
             <el-form-item label="节目编码" prop="keyword" >
             <el-input
               width="100%"
@@ -265,7 +285,7 @@ onUnmounted(() => {
             />
           </el-form-item>
           </el-col>
-          <el-col :span="8">
+          <el-col :span="5">
             <el-form-item label="节目名称" prop="filterName">
             <el-input
               v-model="store.filterName"
@@ -295,9 +315,11 @@ onUnmounted(() => {
           </el-form-item>
           </el-col>
             </el-row>
+            <div style="text-align:center;margin-top:12px">
+              <el-button type="primary" @click="submitAllSelected" class="submit-btn">提交全部</el-button>
+            </div>
           </el-form>
         </div>
-
         <!-- 评分列表 -->
         <div class="content-card">
           <div class="content-header-row">
@@ -333,6 +355,7 @@ onUnmounted(() => {
                 width="44"
                 header-align="center"
                 align="center"
+                :selectable="checkSelectable"
               />
 
               <el-table-column
@@ -376,14 +399,36 @@ onUnmounted(() => {
               <el-table-column
                 header-align="center"
                 align="center"
-                label="组别"
-                min-width="150"
+                label="分数"
+                min-width="100"
               >
                 <template #default="{ row }">
-                  <span class="program-name">{{ row.group }}</span>
+                  <div class="score-cell">
+                    <!-- 草稿(0) / 暂存(1): 点击切换输入/显示，失焦自动保存 -->
+                    <template v-if="row.status === 0 || row.status === 1">
+                      <el-input
+                        v-if="editingCode === row.code"
+                        ref="scoreInputRef"
+                        v-model.number="store.editingScores[row.code]"
+                        size="small"
+                        placeholder="输入分数"
+                        controls-position="right"
+                        @blur="onScoreBlur(row)"
+                      />
+                      <span
+                        v-else
+                        class="score-text"
+                        @click="startEdit(row)"
+                      >
+                        {{ (store.editingScores[row.code] || row.score) ? (store.editingScores[row.code] || row.score) + '分' : '点击输入' }}
+                      </span>
+                    </template>
+                    <span v-else-if="row.status === 2">{{ row.score }}{{ row.score ? '分' : '' }}</span>
+                    <!-- 无需评分(-1) -->
+                    <span v-else>—</span>
+                  </div>
                 </template>
               </el-table-column>
-
               <el-table-column
                 header-align="center"
                 align="center"
@@ -394,7 +439,16 @@ onUnmounted(() => {
                   <span class="program-name">{{ row.name }}</span>
                 </template>
               </el-table-column>
-
+              <el-table-column
+                header-align="center"
+                align="center"
+                label="组别"
+                min-width="150"
+              >
+                <template #default="{ row }">
+                  <span class="program-name">{{ row.group }}</span>
+                </template>
+              </el-table-column>
               <el-table-column
                 header-align="center"
                 align="center"
@@ -408,80 +462,8 @@ onUnmounted(() => {
                   </span>
                 </template>
               </el-table-column>
-              <el-table-column
-                header-align="center"
-                align="center"
-                label="分数"
-                min-width="100"
-              >
-                <template #default="{ row }">
-                  <!-- 草稿(0): 可编辑 -->
-                  <el-input
-                    v-if="row.status === 0"
-                    v-model.number="store.editingScores[row.code]"
-                    size="small"
-                    placeholder="输入分数"
-                    controls-position="right"
-                  />
-                  <!-- 暂存(1) / 已提交(2): 只读 -->
-                  <span v-else-if="row.status === 1 || row.status === 2">{{ row.score }}{{ row.score ? '分' : '' }}</span>
-                  <!-- 无需评分(-1) -->
-                  <span v-else>—</span>
-                </template>
-              </el-table-column>
+
               <!-- 操作列 -->
-              <el-table-column
-                header-align="center"
-                align="center"
-                label="操作"
-                min-width="180"
-                fixed="right"
-              >
-                <template #default="{ row }">
-                  <!-- status 0: 未评分 → 可评分 / 弃赛 -->
-                  <div v-if="row.status === 0" class="score-ops">
-                    <el-button
-                      type="success"
-                      link
-                      :disabled="store.editingScores[row.code] === null || store.editingScores[row.code] === undefined"
-                      @click="submitScore(row)"
-                      size="small"
-                    >
-                      评分
-                    </el-button>
-                    <el-button
-                      link
-                      size="small"
-                      type="danger"
-                      @click="markAbandoned(row)"
-                    >
-                      弃赛
-                    </el-button>
-                  </div>
-
-                  <!-- status 1: 已保存 → 可提交 / 重评 -->
-                  <div v-else-if="row.status === 1" class="score-ops">
-                    <el-button
-                      type="primary"
-                      link
-                      size="small"
-                      @click="submitSingle(row)"
-                    >
-                      提交
-                    </el-button>
-                    <el-button text bg size="small" class="rescore-el-btn" @click="requestRescore(row)">
-                      重评
-                    </el-button>
-                  </div>
-
-                  <!-- status 2: 已提交 -->
-                  <span v-else-if="row.status === 2" class="status-badge status-badge--submitted">✓ 已提交</span>
-
-                  <!-- status -1: 无需评分 -->
-                  <span v-else-if="row.status === -1" class="status-badge status-badge--noscore">无需评分</span>
-                  <span v-else class="status-badge status-badge--empty">—</span>
-                </template>
-              </el-table-column>
             </el-table>
           </div>
 

@@ -13,13 +13,22 @@ export interface ProgramWithScore {
   code: string
   name: string
   school: string
+  schoolId?: number
   majorCategory: string
   subCategory: string
+  detailCategory?: string
   group: string
   teamType: string
+  type?: string
   participantCount: number
   score: number | null
-  status: number       // 0:未评分 1:已保存 2:已提交 -1:无需评分
+  minScore?: number | null
+  maxScore?: number | null
+  effectiveCount?: number
+  excludedCount?: number
+  totalReviewers?: number
+  exemptReason?: string | null
+  status: number | string   // expert: 0/1/2/-1  admin: pending/partial/completed/exempt
   award: string
   judges: JudgeScore[]
 }

@@ -71,17 +71,17 @@ export async function fetchExpertPrograms(params = {}) {
  * POST /api/expert/scores/save
  * @param {Array<{ program_id: number, score: number }>} items
  */
-export async function saveScores(items) {
-  const res = await request.post('/expert/scores/save', { items })
+export async function saveScores(payload) {
+  const res = await request.post('/expert/scores/save', payload)
   return res.data
 }
 
 /**
  * 提交评分（锁定不可修改）
  * POST /api/expert/scores/submit
- * @param {Array<{ program_id: number, score: number }>} items
+ * @param {{ items: Array<{ program_id: number, score: number }> }} payload
  */
-export async function submitScores(items) {
-  const res = await request.post('/expert/scores/submit', { items })
+export async function submitScores(payload) {
+  const res = await request.post('/expert/scores/submit', payload)
   return res.data
 }
