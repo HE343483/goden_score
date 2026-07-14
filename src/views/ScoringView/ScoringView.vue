@@ -315,13 +315,13 @@ onUnmounted(() => {
           </el-form-item>
           </el-col>
             </el-row>
-            <div style="text-align:center;margin-top:12px">
-              <el-button type="primary" @click="submitAllSelected" class="submit-btn">提交全部</el-button>
-            </div>
           </el-form>
         </div>
         <!-- 评分列表 -->
         <div class="content-card">
+          <div >
+              <el-button type="primary" @click="submitAllSelected" class="submit-btn">提交</el-button>
+            </div>
           <div class="content-header-row">
             <div class="content-header-left">
               <h2 class="section-title">评分列表</h2>
