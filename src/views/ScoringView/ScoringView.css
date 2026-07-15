@@ -289,6 +289,11 @@
   border-radius: 8px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
   margin-bottom: 20px;
+  min-width: 0;
+}
+
+.search-form {
+  min-width: 0;
 }
 
 .toolbar-left {
@@ -639,6 +644,7 @@
   color: var(--color-text-muted);
   letter-spacing: 1px;
 }
+/* 自适应 — 1024px 以下（平板横屏 / 小笔记本） */
 @media (max-width: 1024px) {
   .top-header { padding: 0 14px; height: 48px; }
   .header-title { font-size: 15px; }

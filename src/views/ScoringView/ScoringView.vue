@@ -273,7 +273,7 @@ onUnmounted(() => {
         <!-- 工具栏 -->
         <div class="search-area">
           <el-form :model="store" class="search-form" label-width="90px">
-            <el-row :gutter="24" style="min-width: 1200px">
+            <el-row :gutter="24">
               <el-col :span="6">
             <el-form-item label="节目编码" prop="keyword" >
             <el-input
@@ -350,7 +350,6 @@ onUnmounted(() => {
               @selection-change="onSelectionChange"
               row-key="code"
             >
-              <el-table-column type="selection" width="-10" />
               <el-table-column
                 type="selection"
                 width="44"
@@ -387,7 +386,7 @@ onUnmounted(() => {
                 header-align="center"
                 align="center"
                 label="节目类型"
-                min-width="350"
+                min-width="180"
               >
                 <template #default="{ row }">
                   <span class="program-name">{{ row.type }}</span>

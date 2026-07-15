@@ -98,3 +98,12 @@ export async function fetchAdminPrograms(params = {}) {
     total: res.data?.count ?? 0,
   }
 }
+
+/**
+ * 管理端 — 更新豁免状态（弃赛/取消弃赛）
+ * POST /api/admin/exemptions
+ * @param {{ program_id: number, exemption_type: 'abandoned'|'cancel_abandoned'|'manual_exclude'|'cancel_exclude', reviewer_id?: number }} payload
+ */
+export async function updateExemption(payload) {
+  await request.post('/admin/exemptions', payload)
+}

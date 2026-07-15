@@ -29,7 +29,12 @@ const router = createRouter({
         {
           path: 'list',
           name: 'export',
-          component: () => import('../views/Export/ExportView/ExportView.vue'),
+      component: () => import('../views/Export/ExportView/ExportView.vue'),
+        },
+        {
+          path: 'experts',
+          name: 'experts',
+          component: () => import('../views/Export/ExpertAccountManagement/ExpertAccountManagement.vue'),
         },
       ],
     },
