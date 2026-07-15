@@ -36,10 +36,10 @@ const detail = ref<{
   scores: ReviewerScore[]
 } | null>(null)
 
-watch(() => [props.visible, props.program], async ([vis, prog]) => {
-  if (vis && prog?.id) {
+watch(() => [props.visible, props.program], async ([vis]) => {
+  if (vis && props.program?.id) {
     loading.value = true
-    detail.value = await fetchProgramDetail(prog.id)
+    detail.value = await fetchProgramDetail(props.program.id)
     loading.value = false
   }
 })

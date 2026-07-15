@@ -639,6 +639,7 @@
   color: var(--color-text-muted);
   letter-spacing: 1px;
 }
+@media (max-width: 1024px) {
   .top-header { padding: 0 14px; height: 48px; }
   .header-title { font-size: 15px; }
 
