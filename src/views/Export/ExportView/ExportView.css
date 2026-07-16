@@ -182,14 +182,7 @@
 }
 
 /* ═══ 表格样式 ═══ */
-.el-table {
-  --el-table-border-color: var(--color-border);
-  --el-table-header-bg-color: var(--color-bg-subtle, #EDE9E0);
-  --el-table-header-text-color: var(--color-text);
-  --el-table-row-hover-bg-color: var(--color-accent-light);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
+
 
 .el-table :deep(th.el-table__cell) {
   font-weight: 600;

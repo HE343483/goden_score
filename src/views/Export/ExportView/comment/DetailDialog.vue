@@ -77,7 +77,7 @@ function getStatusText(status: number | string): string {
     width="600px"
     top="10vh"
     :close-on-click-modal="false"
-    append-to-body
+    :modal-class="'detail-no-mask'"
     @update:model-value="emit('update:visible', $event)"
   >
     <div v-if="program && detail" class="detail-body" v-loading="loading">
