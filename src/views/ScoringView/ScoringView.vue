@@ -21,24 +21,24 @@ const isTablet = ref(false)
 /* 控制分数列的输入框切换 */
 const editingCode = ref<string | null>(null)
 
-/* 学校模糊搜索下拉候选 */
-const schoolOptions = ref<{ id: number; school_name: string }[]>([])
+/* 学校模糊搜索（el-autocomplete） */
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 
-async function searchSchools(keyword: string) {
-  if (!keyword) {
-    schoolOptions.value = []
-    return
-  }
+async function querySearch(query: string, cb: (results: { value: string; id: number }[]) => void) {
+  if (!query) { cb([]); return }
   if (searchTimer) clearTimeout(searchTimer)
   searchTimer = setTimeout(async () => {
     try {
-      const res = await fetchSchools(keyword)
-      schoolOptions.value = (res.data ?? []).slice(0, 50)
-    } catch {
-      schoolOptions.value = []
-    }
+      const res = await fetchSchools(query)
+      const list = (res.data ?? []).slice(0, 50)
+      cb(list.map((s: { id: number; school_name: string }) => ({ value: s.school_name, id: s.id })))
+    } catch { cb([]) }
   }, 300)
+}
+
+function handleSchoolSelect(item: { value: string; id: number }) {
+  store.school = item.value
+  refresh()
 }
 
 const paginatedData = ref<ProgramWithScore[]>([])
@@ -311,24 +311,20 @@ onUnmounted(() => {
           </el-col>
           <el-col :span="5">
             <el-form-item label="参赛学校" prop="school">
-            <el-select
+            <el-autocomplete
               v-model="store.school"
+              :fetch-suggestions="querySearch"
               placeholder="学校名称模糊搜索"
               clearable
-              filterable
-              remote
-              :remote-method="searchSchools"
-              :suffix-icon="Search"
+              :trigger-on-focus="false"
               class="search-input"
+              @select="handleSchoolSelect"
               @change="refresh"
             >
-              <el-option
-                v-for="item in schoolOptions"
-                :key="item.id"
-                :label="item.school_name"
-                :value="item.school_name"
-              />
-            </el-select>
+              <template #suffix>
+                <el-icon><Search /></el-icon>
+              </template>
+            </el-autocomplete>
           </el-form-item>
           </el-col>
           <el-col :span="5">
