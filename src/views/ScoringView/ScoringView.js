@@ -48,16 +48,28 @@ function mapApiToProgram(api) {
 }
 
 /**
+ * 模糊查询学校列表
+ * GET /api/expert/schools
+ * @param {string} keyword 学校名称关键字
+ * @returns {Promise<{ data: Array }>}
+ */
+export async function fetchSchools(keyword) {
+  const res = await request.get('/expert/schools', { params: { keyword, limit: 50 } })
+  return res.data ?? { data: [] }
+}
+
+/**
  * 拉取专家分配的项目列表
  * GET /api/expert/programs
- * @param {{ page?: number, limit?: number, status?: string, keyword?: string }} params
+ * @param {{ page?: number, limit?: number, status?: string, keyword?: string, school_name?: string }} params
  * @returns {Promise<{ list: Array, total: number }>}
  */
 export async function fetchExpertPrograms(params = {}) {
-  const { page = 1, limit = 100, status, keyword } = params
+  const { page = 1, limit = 100, status, keyword, school_name } = params
   const query = { page, limit }
   if (status) query.status = status
   if (keyword) query.keyword = keyword
+  if (school_name) query.school_name = school_name
   const res = await request.get('/expert/programs', { params: query })
   const list = (res.data?.data ?? []).map(mapApiToProgram)
   return {

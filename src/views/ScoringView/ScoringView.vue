@@ -2,9 +2,10 @@
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Search } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { useScoreStore, type ProgramWithScore } from '@/stores/score'
-import { fetchExpertPrograms, saveScores, submitScores } from './ScoringView.js'
+import { fetchExpertPrograms, saveScores, submitScores, fetchSchools } from './ScoringView.js'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -19,6 +20,26 @@ const isTablet = ref(false)
 
 /* 控制分数列的输入框切换 */
 const editingCode = ref<string | null>(null)
+
+/* 学校模糊搜索（el-autocomplete） */
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+
+async function querySearch(query: string, cb: (results: { value: string; id: number }[]) => void) {
+  if (!query) { cb([]); return }
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(async () => {
+    try {
+      const res = await fetchSchools(query)
+      const list = (res.data ?? []).slice(0, 50)
+      cb(list.map((s: { id: number; school_name: string }) => ({ value: s.school_name, id: s.id })))
+    } catch { cb([]) }
+  }, 300)
+}
+
+function handleSchoolSelect(item: { value: string; id: number }) {
+  store.school = item.value
+  refresh()
+}
 
 const paginatedData = ref<ProgramWithScore[]>([])
 
@@ -62,7 +83,7 @@ function handleCurrentChange(val: number) {
 }
 
 watch(
-  [() => store.keyword, () => store.filterStatus],
+  [() => store.keyword, () => store.filterStatus, () => store.school],
   () => { refresh() }
 )
 
@@ -99,7 +120,10 @@ function checkSelectable(row: ProgramWithScore): boolean {
 
 async function reloadPrograms() {
   try {
-    const { list, total: totalCount } = await fetchExpertPrograms({ limit: 100 })
+    const { list, total: totalCount } = await fetchExpertPrograms({
+      limit: 100,
+      school_name: store.school || undefined,
+    })
     store.setPrograms(list)
     total.value = totalCount
     filterData()
@@ -283,6 +307,24 @@ onUnmounted(() => {
               clearable
               class="search-input"
             />
+          </el-form-item>
+          </el-col>
+          <el-col :span="5">
+            <el-form-item label="参赛学校" prop="school">
+            <el-autocomplete
+              v-model="store.school"
+              :fetch-suggestions="querySearch"
+              placeholder="学校名称模糊搜索"
+              clearable
+              :trigger-on-focus="false"
+              class="search-input"
+              @select="handleSchoolSelect"
+              @change="refresh"
+            >
+              <template #suffix>
+                <el-icon><Search /></el-icon>
+              </template>
+            </el-autocomplete>
           </el-form-item>
           </el-col>
           <el-col :span="5">
@@ -493,6 +535,10 @@ onUnmounted(() => {
 @import './ScoringView.css';
 
 /* 勾选列 — 表头与行复选框左右对齐（:deep 写在组件内确保被 Vue 编译器正确处理） */
+/* 消除 main.css `td:first-child { padding-left: 12px }` 对勾选列的干扰 */
+:deep(.el-table__body-wrapper .el-table__row > td.el-table-column--selection:first-child) {
+  padding-left: 0 !important;
+}
 :deep(.el-table .el-table-column--selection .cell) {
   display: flex !important;
   justify-content: center !important;

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { fetchExpertAssignments } from '../ExpertAccountManagement.js'
+import type { ExpertApi } from '../types'
 
 const props = defineProps<{
   visible: boolean
-  expert:  ExpertApi | undefined
+  expert:  ExpertApi | null | undefined
 }>()
 
 const emit = defineEmits<{
@@ -14,17 +15,24 @@ const emit = defineEmits<{
 const loading = ref(false)
 const programs = ref<[]>([])
 
-watch(() => [props.visible, props.expert], async ([vis, expert]) => {
-  if (vis && expert?.id) {
-    loading.value = true
-    try {
-      programs.value = await fetchExpertAssignments(expert.id)
-    } catch {
-      programs.value = []
-    } finally {
-      loading.value = false
-    }
+async function loadPrograms() {
+  if (!props.visible || !props.expert?.id) return
+  loading.value = true
+  try {
+    programs.value = await fetchExpertAssignments(props.expert.id)
+  } catch {
+    programs.value = []
+  } finally {
+    loading.value = false
   }
+}
+
+watch(() => props.visible, (vis) => {
+  if (vis) loadPrograms()
+})
+
+watch(() => props.expert, () => {
+  if (props.visible) loadPrograms()
 })
 
 function getStatusTag(status: string | null): string {

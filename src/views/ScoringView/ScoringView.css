@@ -644,6 +644,29 @@
   color: var(--color-text-muted);
   letter-spacing: 1px;
 }
+/* 自适应 — 1024px 以下（平板横屏 / 小笔记本） */
+@media (max-width: 1024px) {
+  .top-header { padding: 0 14px; height: 48px; }
+  .header-title { font-size: 15px; }
+
+  .content-area { padding: 14px 14px; }
+  .toolbar { gap: 8px; margin-bottom: 14px; }
+  .toolbar-left { gap: 6px; }
+  .toolbar-right { gap: 6px; }
+  .search-input { width: 150px; }
+  .status-select { width: 110px; }
+
+  .content-card { padding: 16px 14px 14px; }
+
+  .my-pagination :deep(.el-pager li) {
+    min-width: 28px;
+    font-size: 12px;
+  }
+  .my-pagination :deep(.btn-prev),
+  .my-pagination :deep(.btn-next) {
+    min-width: 28px;
+  }
+}
 
 /*自适应 — 768px 以下（平板竖屏 / 手机）*/
 @media (max-width: 768px) {

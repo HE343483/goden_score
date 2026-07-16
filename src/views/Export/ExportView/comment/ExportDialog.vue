@@ -11,7 +11,7 @@ interface CatLeaf {
 interface CatGroup {
   label: string
   teamType?: string
-  children: CatLeaf[]
+  children?: CatLeaf[]
 }
 
 const props = defineProps<{
