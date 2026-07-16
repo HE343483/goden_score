@@ -6,6 +6,7 @@ import {
   updateExpertStatus,
 } from './ExpertAccountManagement.js'
 import AssignedProgramsDialog from './comment/AssignedProgramsDialog.vue'
+import type { ExpertApi } from './types'
 
 /* ── 数据 ── */
 const loading = ref(false)
@@ -46,11 +47,11 @@ watch([filterSchool, filterStatus], () => {
 
 /* ── 查看分配节目对话框 ── */
 const programsDialogVisible = ref(false)
-const programsTarget = ref<ExpertApi>(null)
+const programsTarget = ref<ExpertApi | null>(null)
 
 /* ── 更改状态对话框 ── */
 const statusDialogVisible = ref(false)
-const statusTarget = ref(null)
+const statusTarget = ref<ExpertApi | null>(null)
 const newStatus = ref('')
 
 /* ── 加载数据 ── */
