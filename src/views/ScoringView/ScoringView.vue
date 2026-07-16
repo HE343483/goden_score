@@ -2,6 +2,7 @@
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Search } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { useScoreStore, type ProgramWithScore } from '@/stores/score'
 import { fetchExpertPrograms, saveScores, submitScores, fetchSchools } from './ScoringView.js'
@@ -317,6 +318,7 @@ onUnmounted(() => {
               filterable
               remote
               :remote-method="searchSchools"
+              :suffix-icon="Search"
               class="search-input"
               @change="refresh"
             >
