@@ -39,8 +39,8 @@ type ExportType = 'score' | 'public' | 'expert'
 const exportType = ref<ExportType>('score')
 
 const exportTypeList = [
-  { label: '成绩表', value: 'score' as const },
-  { label: '公示表', value: 'public' as const },
+  { label: '成绩汇总表', value: 'score' as const },
+  { label: '成绩排名公示表', value: 'public' as const },
   { label: '专家评分汇总表', value: 'expert' as const },
 ]
 

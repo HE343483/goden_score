@@ -350,6 +350,10 @@ onUnmounted(() => {
               @selection-change="onSelectionChange"
               row-key="code"
             >
+            <el-table-column
+                type="selection"
+                width="-10"
+              />
               <el-table-column
                 type="selection"
                 width="44"

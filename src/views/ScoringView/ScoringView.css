@@ -587,13 +587,13 @@
   background: #2E7D5B;
 }
 
-/* 无需评分 — 灰色 */
+/* 无需评分 — 橙黄色 */
 .status-tag--noscore {
-  background: #F0F0F0;
-  color: #AAA;
+  background: #FFF8E1;
+  color: #fe0808;
 }
 .status-tag--noscore .status-dot {
-  background: #CCC;
+  background: #ff0101;
 }
 
 /* 弃赛 — 红色 */
