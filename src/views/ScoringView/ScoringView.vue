@@ -297,7 +297,7 @@ onUnmounted(() => {
         <div class="search-area">
           <el-form :model="store" class="search-form" label-width="90px">
             <el-row :gutter="24">
-              <el-col :span="6">
+              <el-col :xs="24" :sm="12" :md="6">
             <el-form-item label="节目编码" prop="keyword" >
             <el-input
               width="100%"
@@ -308,7 +308,7 @@ onUnmounted(() => {
             />
           </el-form-item>
           </el-col>
-          <el-col :span="5">
+          <el-col :xs="24" :sm="12" :md="6">
             <el-form-item label="参赛学校" prop="school">
             <el-select
               v-model="store.school"
@@ -328,7 +328,7 @@ onUnmounted(() => {
             </el-select>
           </el-form-item>
           </el-col>
-          <el-col :span="5">
+          <el-col :xs="24" :sm="12" :md="6">
             <el-form-item label="节目名称" prop="filterName">
             <el-input
               v-model="store.filterName"
@@ -339,7 +339,7 @@ onUnmounted(() => {
             />
           </el-form-item>
           </el-col>
-          <el-col :span="8">
+          <el-col :xs="24" :sm="12" :md="6">
             <el-form-item label="状态" prop="filterStatus">
             <el-select
               v-model="store.filterStatus"

@@ -117,29 +117,37 @@ onMounted(() => {
   <div >
     <!-- 查询条件 -->
     <el-card shadow="never" class="search-card">
-      <el-form :inline="true" label-width="auto" size="default">
+      <el-form label-width="80px" size="default">
+        <el-row :gutter="24">
+          <el-col :xs="24" :sm="24" :md="5">
         <el-form-item label="学校">
           <el-input
             v-model="filterSchool"
             placeholder="输入学校名称模糊搜索"
             clearable
-            style="width: 230px"
+            style="width: 240px"
           />
         </el-form-item>
+        </el-col>
+        <el-col :xs="24" :sm="12" :md="5">
         <el-form-item label="状态">
           <el-select
             v-model="filterStatus"
             placeholder="全部状态"
             clearable
-            style="width: 140px"
+            style="width: 240px"
           >
             <el-option label="启用" value="enabled" />
             <el-option label="停用" value="disabled" />
           </el-select>
         </el-form-item>
+        </el-col>
+        <el-col :xs="24" :sm="12" :md="1">
         <el-form-item>
           <el-button @click="handleReset">重置</el-button>
         </el-form-item>
+        </el-col>
+        </el-row>
       </el-form>
     </el-card>
 

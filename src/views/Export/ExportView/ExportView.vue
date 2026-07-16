@@ -182,29 +182,28 @@ async function handleDelete(row: ProgramWithScore) {
       <div class="stats-item"></div>
     </div>
   </div>
-  <div class="search-area">
-    <el-form label-width="80px">
-      <el-row>
-        <el-col :span="6">
+  <el-card shadow="never">
+    <el-form label-width="80px" size="default">
+      <el-row :gutter="24">
+        <el-col :xs="24" :sm="12" :md="7">
       <el-form-item label="节目搜索" prop="keyword">
-        <div class="toolbar-search">
         <el-input
           v-model="store.keyword"
           placeholder="搜索节目编码/名称"
           clearable
           class="search-input"
+          style="width: 230px"
         />
-      </div>
       </el-form-item>
       </el-col>
-      <el-col :span="8">
+      <el-col :xs="24" :sm="12" :md="7">
       <el-form-item label="节目类型" prop="category">
-      <div class="toolbar-search">
         <el-select
           v-model="filterCategory"
           placeholder="全部大类"
           clearable
           class="search-input"
+          style="width: 230px"
         >
           <el-option
             v-for="cat in majorCategories"
@@ -213,12 +212,11 @@ async function handleDelete(row: ProgramWithScore) {
             :value="cat"
           />
         </el-select>
-      </div>
       </el-form-item>
       </el-col>
       </el-row>
     </el-form>
-  </div>
+  </el-card>
   <!-- 表格卡片 -->
   <div class="table-card">
     <!-- 标题行 + 筛选 + 导出 -->
