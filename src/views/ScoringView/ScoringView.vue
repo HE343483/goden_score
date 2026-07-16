@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowDown } from '@element-plus/icons-vue'
@@ -20,6 +20,7 @@ const isTablet = ref(false)
 
 /* 控制分数列的输入框切换 */
 const editingCode = ref<string | null>(null)
+const scoreInputRef = ref<any>(null)
 
 /* 学校下拉框选项（全部加载到本地，客户端过滤） */
 const schoolOptions = ref<{ id: number; school_name: string }[]>([])
@@ -101,6 +102,9 @@ function startEdit(row: ProgramWithScore) {
   if (row.status === 1 && row.score !== null && row.score !== undefined) {
     store.editingScores[row.code] = row.score
   }
+  nextTick(() => {
+    scoreInputRef.value?.focus()
+  })
 }
 
 function checkSelectable(row: ProgramWithScore): boolean {
@@ -486,6 +490,7 @@ onUnmounted(() => {
                         size="small"
                         placeholder="输入分数"
                         controls-position="right"
+                        autofocus
                         @blur="onScoreBlur(row)"
                       />
                       <span
