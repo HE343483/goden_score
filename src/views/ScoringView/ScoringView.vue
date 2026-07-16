@@ -2,7 +2,7 @@
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search } from '@element-plus/icons-vue'
+import { ArrowDown } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { useScoreStore, type ProgramWithScore } from '@/stores/score'
 import { fetchExpertPrograms, saveScores, submitScores, fetchSchools } from './ScoringView.js'
@@ -21,25 +21,20 @@ const isTablet = ref(false)
 /* 控制分数列的输入框切换 */
 const editingCode = ref<string | null>(null)
 
-/* 学校模糊搜索（el-autocomplete） */
-let searchTimer: ReturnType<typeof setTimeout> | null = null
+/* 学校下拉框选项（全部加载到本地，客户端过滤） */
+const schoolOptions = ref<{ id: number; school_name: string }[]>([])
 
-async function querySearch(query: string, cb: (results: { value: string; id: number }[]) => void) {
-  if (!query) { cb([]); return }
-  if (searchTimer) clearTimeout(searchTimer)
-  searchTimer = setTimeout(async () => {
-    try {
-      const res = await fetchSchools(query)
-      const list = (res.data ?? []).slice(0, 50)
-      cb(list.map((s: { id: number; school_name: string }) => ({ value: s.school_name, id: s.id })))
-    } catch { cb([]) }
-  }, 300)
+async function loadAllSchools() {
+  if (schoolOptions.value.length > 0) return
+  try {
+    const res = await fetchSchools('')
+    schoolOptions.value = (res.data ?? []).slice(0, 200)
+  } catch {
+    schoolOptions.value = []
+  }
 }
 
-function handleSchoolSelect(item: { value: string; id: number }) {
-  store.school = item.value
-  refresh()
-}
+onMounted(() => loadAllSchools())
 
 const paginatedData = ref<ProgramWithScore[]>([])
 
@@ -311,20 +306,22 @@ onUnmounted(() => {
           </el-col>
           <el-col :span="5">
             <el-form-item label="参赛学校" prop="school">
-            <el-autocomplete
+            <el-select
               v-model="store.school"
-              :fetch-suggestions="querySearch"
               placeholder="学校名称模糊搜索"
               clearable
-              :trigger-on-focus="false"
+              filterable
+              :suffix-icon="ArrowDown"
               class="search-input"
-              @select="handleSchoolSelect"
               @change="refresh"
             >
-              <template #suffix>
-                <el-icon><Search /></el-icon>
-              </template>
-            </el-autocomplete>
+              <el-option
+                v-for="item in schoolOptions"
+                :key="item.id"
+                :label="item.school_name"
+                :value="item.school_name"
+              />
+            </el-select>
           </el-form-item>
           </el-col>
           <el-col :span="5">

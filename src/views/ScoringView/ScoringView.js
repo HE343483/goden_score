@@ -54,7 +54,7 @@ function mapApiToProgram(api) {
  * @returns {Promise<{ data: Array }>}
  */
 export async function fetchSchools(keyword) {
-  const res = await request.get('/expert/schools', { params: { keyword, limit: 50 } })
+  const res = await request.get('/expert/schools', { params: { keyword, limit: 200 } })
   return res.data ?? { data: [] }
 }
 
