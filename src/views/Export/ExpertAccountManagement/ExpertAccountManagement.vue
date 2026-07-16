@@ -6,6 +6,7 @@ import {
   updateExpertStatus,
 } from './ExpertAccountManagement.js'
 import AssignedProgramsDialog from './comment/AssignedProgramsDialog.vue'
+import ExpertSchools from '@/comment/ExpertSchools.vue'
 import type { ExpertApi } from './types'
 
 /* ── 数据 ── */
@@ -13,37 +14,62 @@ const loading = ref(false)
 const allExperts = ref<ExpertApi[]>([])
 
 /* ── 查询条件 ── */
+const filterKeyword = ref('')
 const filterSchool = ref('')
 const filterStatus = ref('')
 
-/* ── 前端筛选 ── */
-const filteredExperts = computed(() => {
-  let list = allExperts.value
-  if (filterSchool.value) {
-    const kw = filterSchool.value.toLowerCase()
-    list = list.filter(e => (e.school ?? '').toLowerCase().includes(kw))
-  }
-  if (filterStatus.value) {
-    list = list.filter(e => e.status === filterStatus.value)
-  }
-  return list
-})
+/* ── 数据 ── */
+const totalCount = ref(0)
 
-/* ── 前端分页 ── */
+/* ── 分页 ── */
 const currentPage = ref(1)
 const pageSize = ref(15)
 
-const total = computed(() => filteredExperts.value.length)
-
-const pagedExperts = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  return filteredExperts.value.slice(start, start + pageSize.value)
-})
+const pagedExperts = computed(() => allExperts.value)
 
 /* 筛选条件变化时重置到第一页 */
-watch([filterSchool, filterStatus], () => {
+watch([filterKeyword, filterSchool, filterStatus], () => {
   currentPage.value = 1
 })
+
+/* ── 加载数据（后端筛选+分页） ── */
+async function loadData() {
+  loading.value = true
+  try {
+    const params: Record<string> = {
+      page: currentPage.value,
+      limit: pageSize.value,
+    }
+    if (filterKeyword.value) params.keyword = filterKeyword.value
+    if (filterStatus.value) params.status = filterStatus.value
+    if (filterSchool.value) params.school_id = filterSchool.value
+    const res = await fetchExperts(params)
+    allExperts.value = res.list
+    totalCount.value = res.total
+  } catch {
+    ElMessage.error('获取专家列表失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+function handleSearch() {
+  currentPage.value = 1
+  loadData()
+}
+
+function handleReset() {
+  filterKeyword.value = ''
+  filterSchool.value = ''
+  filterStatus.value = ''
+  currentPage.value = 1
+  loadData()
+}
+
+function handlePageChange(p: number) {
+  currentPage.value = p
+  loadData()
+}
 
 /* ── 查看分配节目对话框 ── */
 const programsDialogVisible = ref(false)
@@ -54,30 +80,7 @@ const statusDialogVisible = ref(false)
 const statusTarget = ref<ExpertApi | null>(null)
 const newStatus = ref('')
 
-/* ── 加载数据 ── */
-async function loadData() {
-  loading.value = true
-  try {
-    const res = await fetchExperts({ limit: 999 })
-    allExperts.value = res.list
-  } catch {
-    ElMessage.error('获取专家列表失败')
-  } finally {
-    loading.value = false
-  }
-}
-
-function handleReset() {
-  filterSchool.value = ''
-  filterStatus.value = ''
-  currentPage.value = 1
-}
-
-function handlePageChange(p: number) {
-  currentPage.value = p
-}
-
-/* ── 查看分配节目 ── */
+/* ── 查看分配节目对话框 ── */
 function openProgramsDialog(row: ExpertApi) {
   programsTarget.value = row
   programsDialogVisible.value = true
@@ -119,14 +122,20 @@ onMounted(() => {
     <el-card shadow="never" class="search-card">
       <el-form label-width="80px" size="default">
         <el-row :gutter="24">
-          <el-col :xs="24" :sm="24" :md="5">
-        <el-form-item label="学校">
+          <el-col :xs="24" :sm="12" :md="5">
+        <el-form-item label="姓名">
           <el-input
-            v-model="filterSchool"
-            placeholder="输入学校名称模糊搜索"
+            v-model="filterKeyword"
+            placeholder="专家姓名模糊搜索"
             clearable
             style="width: 240px"
+            @keyup.enter="handleSearch"
           />
+        </el-form-item>
+        </el-col>
+        <el-col :xs="24" :sm="12" :md="5">
+        <el-form-item label="学校">
+          <ExpertSchools v-model="filterSchool" style="width: 240px" />
         </el-form-item>
         </el-col>
         <el-col :xs="24" :sm="12" :md="5">
@@ -142,8 +151,9 @@ onMounted(() => {
           </el-select>
         </el-form-item>
         </el-col>
-        <el-col :xs="24" :sm="12" :md="1">
-        <el-form-item>
+        <el-col :xs="24" :sm="12" :md="5">
+        <el-form-item label-width="0">
+          <el-button type="primary" @click="handleSearch">搜索</el-button>
           <el-button @click="handleReset">重置</el-button>
         </el-form-item>
         </el-col>
@@ -188,12 +198,12 @@ onMounted(() => {
         <el-pagination
           v-model:current-page="currentPage"
           v-model:page-size="pageSize"
-          :total="total"
+          :total="totalCount"
           :page-sizes="[15, 30, 50]"
           layout="total, sizes, prev, pager, next, jumper"
           background
           @current-change="handlePageChange"
-          @size-change="currentPage = 1"
+          @size-change="currentPage = 1; loadData()"
         />
       </div>
     </el-card>

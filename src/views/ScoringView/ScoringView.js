@@ -13,6 +13,14 @@ const STATUS_MAP = {
   no_score: -1,   // 无需评分（弃赛/同校回避）
 }
 
+/* 反向映射：本地数字 → API 字符串 */
+const STATUS_TO_API = {
+  0: 'unscored',
+  1: 'draft',
+  2: 'submitted',
+  [-1]: 'no_score',
+}
+
 /**
  * @param {object} api —— 后端返回的原始节目数据
  * @param {number} api.id
@@ -61,15 +69,15 @@ export async function fetchSchools(keyword) {
 /**
  * 拉取专家分配的项目列表
  * GET /api/expert/programs
- * @param {{ page?: number, limit?: number, status?: string, keyword?: string, school_name?: string }} params
+ * @param {{ page?: number, limit?: number, status?: string, keyword?: string, school_id?: number }} params
  * @returns {Promise<{ list: Array, total: number }>}
  */
 export async function fetchExpertPrograms(params = {}) {
-  const { page = 1, limit = 100, status, keyword, school_name } = params
+  const { page = 1, limit = 100, status, keyword, school_id } = params
   const query = { page, limit }
   if (status) query.status = status
   if (keyword) query.keyword = keyword
-  if (school_name) query.school_name = school_name
+  if (school_id !== undefined) query.school_id = school_id
   const res = await request.get('/expert/programs', { params: query })
   const list = (res.data?.data ?? []).map(mapApiToProgram)
   return {
@@ -77,6 +85,8 @@ export async function fetchExpertPrograms(params = {}) {
     total: res.data?.count ?? 0,
   }
 }
+
+export { STATUS_TO_API }
 
 /**
  * 保存评分

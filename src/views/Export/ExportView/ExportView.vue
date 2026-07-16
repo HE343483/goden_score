@@ -5,6 +5,7 @@ import { useScoreStore, type ProgramWithScore } from '@/stores/score'
 import { fetchAdminPrograms, fetchAdminStats, updateExemption } from './ExportView.js'
 import ExportDialog from './comment/ExportDialog.vue'
 import DetailDialog from './comment/DetailDialog.vue'
+import ExpertSchools from '@/comment/ExpertSchools.vue'
 
 const store = useScoreStore()
 
@@ -15,23 +16,37 @@ const exporting = ref(false)
 const statsData = ref({
   total_programs: 0, pending: 0, partial: 0, completed: 0, exempt: 0,
 })
-onMounted(async () => {
-  const [programsRes, statsRes] = await Promise.all([
-    fetchAdminPrograms({ limit: 100 }),
-    fetchAdminStats(),
-  ])
+const totalCount = ref(0)
+
+async function reloadPrograms() {
+  const params: Record<string> = {
+    page: page.value,
+    limit: pageSize,
+  }
+  if (store.keyword) params.keyword = store.keyword
+  if (filterCategory.value) params.major_category = filterCategory.value
+  if (filterSchool.value) params.school_id = filterSchool.value
+  if (filterGroup.value) params.group_level = filterGroup.value
+  if (activeTab.value !== 'all') params.program_status = activeTab.value
+  const programsRes = await fetchAdminPrograms(params)
   store.setPrograms(programsRes.list)
+  totalCount.value = programsRes.total
+}
+
+onMounted(async () => {
+  const [statsRes] = await Promise.all([
+    fetchAdminStats(),
+    reloadPrograms(),
+  ])
   statsData.value = statsRes
 })
 
-async function reloadPrograms() {
-  const programsRes = await fetchAdminPrograms({ limit: 100 })
-  store.setPrograms(programsRes.list)
-}
-
 /* ── 大类下拉选项（前端写死6个大类） ── */
 const filterCategory = ref('')
+const filterSchool = ref('')
+const filterGroup = ref('')
 const majorCategories = ['艺术表演类（集体项目）', '艺术表演类（个人项目）', '学生艺术作品类', '高校校长作品类', '艺术实践工作坊', '优秀成果申报']
+const groupLevels = ['甲组', '乙组', '校长', '-']
 
 /* ── 导出弹窗分类树 ── */
 interface CatGroup {
@@ -48,65 +63,26 @@ const EXPORT_CATEGORIES: CatGroup[] = [
   { label: '优秀成果申报'},
 ]
 
-/* 所有数据 */
+/* 所有数据（后端已筛选+分页，直接使用） */
 const allData = computed(() => store.allPrograms)
-
-/* 按关键词 + 大类 + 状态标签 过滤 */
-const filteredData = computed(() => {
-  let list = allData.value
-  /* 关键词搜索 */
-  if (store.keyword) {
-    const kw = store.keyword.toLowerCase()
-    list = list.filter(d => d.code.toLowerCase().includes(kw) || d.name.toLowerCase().includes(kw))
-  }
-  /* 大类筛选 */
-  if (filterCategory.value) {
-    switch (filterCategory.value) {
-      case '集体':
-        list = list.filter(d => d.majorCategory?.includes('艺术表演') && d.teamType === '集体')
-        break
-      case '个人':
-        list = list.filter(d => d.majorCategory?.includes('艺术表演') && d.teamType === '个人')
-        break
-      case '学生作品':
-        list = list.filter(d => d.majorCategory?.includes('艺术作品') && d.group !== '校长')
-        break
-      case '校长作品':
-        list = list.filter(d => d.majorCategory?.includes('艺术作品') && d.group === '校长')
-        break
-      case '工作坊':
-        list = list.filter(d => d.majorCategory?.includes('工作坊'))
-        break
-      case '优秀成果':
-        list = list.filter(d => d.majorCategory?.includes('美育') || d.majorCategory?.includes('优秀成果'))
-        break
-    }
-  }
-  /* 状态标签 */
-  switch (activeTab.value) {
-    case 'pending':   return list.filter(d => d.status === 'pending')
-    case 'completed': return list.filter(d => d.status === 'completed')
-    case 'exempt':    return list.filter(d => d.status === 'exempt')
-    default:          return list
-  }
-})
-
-/* ── 分页 ── */
 const page = ref(1)
 const pageSize = 20
 
-const paginatedData = computed(() => {
-  const start = (page.value - 1) * pageSize
-  return filteredData.value.slice(start, start + pageSize)
-})
+const paginatedData = computed(() => allData.value)
 
 function handlePageChange(p: number) {
   page.value = p
+  reloadPrograms()
 }
 
-/* 筛选条件变化时重置到第一页 */
+function handleSearch() {
+  page.value = 1
+  reloadPrograms()
+}
+
+/* 筛选条件变化时重置页码（不自动请求，等搜索按钮触发） */
 watch(
-  [filterCategory, activeTab, () => store.keyword],
+  [filterCategory, filterSchool, filterGroup, activeTab, () => store.keyword],
   () => { page.value = 1 }
 )
 
@@ -182,10 +158,10 @@ async function handleDelete(row: ProgramWithScore) {
       <div class="stats-item"></div>
     </div>
   </div>
-  <el-card shadow="never">
-    <el-form label-width="80px" size="default">
-      <el-row :gutter="24">
-        <el-col :xs="24" :sm="12" :md="7">
+<el-card shadow="never">
+  <el-form label-width="80px" size="default">
+    <el-row :gutter="24">
+    <el-col :xs="24" :sm="12" :md="7">
       <el-form-item label="节目搜索" prop="keyword">
         <el-input
           v-model="store.keyword"
@@ -195,8 +171,13 @@ async function handleDelete(row: ProgramWithScore) {
           style="width: 230px"
         />
       </el-form-item>
-      </el-col>
-      <el-col :xs="24" :sm="12" :md="7">
+    </el-col>
+    <el-col :xs="24" :sm="12" :md="7">
+      <el-form-item label="学校搜索" prop="school">
+        <ExpertSchools v-model="filterSchool" style="width: 230px" />
+      </el-form-item>
+    </el-col>
+    <el-col :xs="24" :sm="12" :md="7">
       <el-form-item label="节目类型" prop="category">
         <el-select
           v-model="filterCategory"
@@ -213,9 +194,32 @@ async function handleDelete(row: ProgramWithScore) {
           />
         </el-select>
       </el-form-item>
-      </el-col>
-      </el-row>
-    </el-form>
+    </el-col>
+    <el-col :xs="24" :sm="12" :md="7">
+      <el-form-item label="组别" prop="group">
+        <el-select
+          v-model="filterGroup"
+          placeholder="全部组别"
+          clearable
+          class="search-input"
+          style="width: 230px"
+        >
+          <el-option
+            v-for="g in groupLevels"
+            :key="g"
+            :label="g === '-' ? '无组别' : g"
+            :value="g"
+          />
+        </el-select>
+      </el-form-item>
+    </el-col>
+    <el-col :xs="24" :sm="12" :md="4">
+      <el-form-item label-width="0">
+        <el-button type="primary" @click="handleSearch">搜索</el-button>
+      </el-form-item>
+    </el-col>
+  </el-row>
+</el-form>
   </el-card>
   <!-- 表格卡片 -->
   <div class="table-card">
@@ -223,7 +227,7 @@ async function handleDelete(row: ProgramWithScore) {
     <div class="table-toolbar">
       <div class="table-toolbar-left">
         <h2 class="section-title">评分列表</h2>
-        <span class="section-count">{{ filteredData.length }} 项</span>
+        <span class="section-count">{{ totalCount }} 项</span>
       </div>
       <div class="table-toolbar-right">
         <!-- 状态筛选 -->
@@ -313,7 +317,7 @@ async function handleDelete(row: ProgramWithScore) {
       <el-pagination
         v-model:current-page="page"
         :page-size="pageSize"
-        :total="filteredData.length"
+        :total="totalCount"
         layout="total, prev, pager, next"
         background
         small

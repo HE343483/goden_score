@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowDown } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { useScoreStore, type ProgramWithScore } from '@/stores/score'
-import { fetchExpertPrograms, saveScores, submitScores, fetchSchools } from './ScoringView.js'
+import { fetchExpertPrograms, saveScores, submitScores, STATUS_TO_API } from './ScoringView.js'
+import ExpertSchools from '@/comment/ExpertSchools.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -20,43 +21,18 @@ const isTablet = ref(false)
 
 /* 控制分数列的输入框切换 */
 const editingCode = ref<string | null>(null)
-const scoreInputRef = ref<any>(null)
+const scoreInputRef = ref<ElInput>(null)
 
-/* 学校下拉框选项（全部加载到本地，客户端过滤） */
-const schoolOptions = ref<{ id: number; school_name: string }[]>([])
-
-async function loadAllSchools() {
-  if (schoolOptions.value.length > 0) return
-  try {
-    const res = await fetchSchools('')
-    schoolOptions.value = (res.data ?? []).slice(0, 200)
-  } catch {
-    schoolOptions.value = []
-  }
-}
-
-onMounted(() => loadAllSchools())
-
-const paginatedData = ref<ProgramWithScore[]>([])
+/* 学校下拉框值（school_id） */
+const filterSchoolId = ref<number | ''>('')
 
 function checkScreen() {
   isTablet.value = window.innerWidth <= 1024
   if (!isTablet.value) sidebarOpen.value = false
 }
 
-function filterData() {
-  const list = store.filteredPrograms
-  const start = (page.value - 1) * limit.value
-  paginatedData.value = list.slice(start, start + limit.value)
-  return list.length
-}
-
+const paginatedData = computed(() => store.allPrograms)
 const total = ref(0)
-
-function refresh() {
-  page.value = 1
-  total.value = filterData()
-}
 
 function handleTabClick(tab: { props: { name: string } }) {
   page.value = 1
@@ -64,24 +40,23 @@ function handleTabClick(tab: { props: { name: string } }) {
   else if (tab.props.name === 'unscored') store.filterStatus = 0
   else if (tab.props.name === 'draft') store.filterStatus = 1
   else if (tab.props.name === 'submitted') store.filterStatus = 2
-  total.value = filterData()
+  reloadPrograms()
 }
 
 function handleSizeChange(val: number) {
   limit.value = val
   page.value = 1
-  total.value = filterData()
+  reloadPrograms()
 }
 
 function handleCurrentChange(val: number) {
   page.value = val
-  total.value = filterData()
+  reloadPrograms()
 }
 
-watch(
-  [() => store.keyword, () => store.filterStatus, () => store.school],
-  () => { refresh() }
-)
+function handleSearch() {
+  refresh()
+}
 
 watch(paginatedData, (list) => {
   const scores: Record<string, number> = {}
@@ -295,14 +270,14 @@ onUnmounted(() => {
       <div class="content-area">
         <!-- 工具栏 -->
         <div class="search-area">
-          <el-form :model="store" class="search-form" label-width="90px">
+          <el-form :model="store" class="search-form" label-width="120px">
             <el-row :gutter="24">
               <el-col :xs="24" :sm="12" :md="6">
-            <el-form-item label="节目编码" prop="keyword" >
+            <el-form-item label="节目编码/名称" prop="keyword" >
             <el-input
               width="100%"
               v-model="store.keyword"
-              placeholder="搜索节目编码"
+              placeholder="搜索节目编码/名称"
               clearable
               class="search-input"
             />
@@ -326,17 +301,6 @@ onUnmounted(() => {
                 :value="item.school_name"
               />
             </el-select>
-          </el-form-item>
-          </el-col>
-          <el-col :xs="24" :sm="12" :md="6">
-            <el-form-item label="节目名称" prop="filterName">
-            <el-input
-              v-model="store.filterName"
-              placeholder="搜索节目名称"
-              clearable
-              class="search-input"
-              @change="refresh"
-            />
           </el-form-item>
           </el-col>
           <el-col :xs="24" :sm="12" :md="6">
