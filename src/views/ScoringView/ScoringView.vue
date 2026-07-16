@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useScoreStore, type ProgramWithScore } from '@/stores/score'
-import { fetchExpertPrograms, saveScores, submitScores } from './ScoringView.js'
+import { fetchExpertPrograms, saveScores, submitScores, fetchSchools } from './ScoringView.js'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -19,6 +19,26 @@ const isTablet = ref(false)
 
 /* 控制分数列的输入框切换 */
 const editingCode = ref<string | null>(null)
+
+/* 学校模糊搜索下拉候选 */
+const schoolOptions = ref<{ id: number; school_name: string }[]>([])
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+
+async function searchSchools(keyword: string) {
+  if (!keyword) {
+    schoolOptions.value = []
+    return
+  }
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(async () => {
+    try {
+      const res = await fetchSchools(keyword)
+      schoolOptions.value = (res.data ?? []).slice(0, 50)
+    } catch {
+      schoolOptions.value = []
+    }
+  }, 300)
+}
 
 const paginatedData = ref<ProgramWithScore[]>([])
 
@@ -62,7 +82,7 @@ function handleCurrentChange(val: number) {
 }
 
 watch(
-  [() => store.keyword, () => store.filterStatus],
+  [() => store.keyword, () => store.filterStatus, () => store.school],
   () => { refresh() }
 )
 
@@ -99,7 +119,10 @@ function checkSelectable(row: ProgramWithScore): boolean {
 
 async function reloadPrograms() {
   try {
-    const { list, total: totalCount } = await fetchExpertPrograms({ limit: 100 })
+    const { list, total: totalCount } = await fetchExpertPrograms({
+      limit: 100,
+      school_name: store.school || undefined,
+    })
     store.setPrograms(list)
     total.value = totalCount
     filterData()
@@ -283,6 +306,27 @@ onUnmounted(() => {
               clearable
               class="search-input"
             />
+          </el-form-item>
+          </el-col>
+          <el-col :span="5">
+            <el-form-item label="参赛学校" prop="school">
+            <el-select
+              v-model="store.school"
+              placeholder="学校名称模糊搜索"
+              clearable
+              filterable
+              remote
+              :remote-method="searchSchools"
+              class="search-input"
+              @change="refresh"
+            >
+              <el-option
+                v-for="item in schoolOptions"
+                :key="item.id"
+                :label="item.school_name"
+                :value="item.school_name"
+              />
+            </el-select>
           </el-form-item>
           </el-col>
           <el-col :span="5">
@@ -489,6 +533,10 @@ onUnmounted(() => {
 @import './ScoringView.css';
 
 /* 勾选列 — 表头与行复选框左右对齐（:deep 写在组件内确保被 Vue 编译器正确处理） */
+/* 消除 main.css `td:first-child { padding-left: 12px }` 对勾选列的干扰 */
+:deep(.el-table__body-wrapper .el-table__row > td.el-table-column--selection:first-child) {
+  padding-left: 0 !important;
+}
 :deep(.el-table .el-table-column--selection .cell) {
   display: flex !important;
   justify-content: center !important;
