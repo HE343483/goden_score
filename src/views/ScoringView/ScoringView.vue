@@ -429,11 +429,20 @@ onUnmounted(() => {
                 header-align="center"
                 align="center"
                 label="状态"
-                width="100"
+                width="110"
               >
                 <template #default="{ row }">
                   <span :class="['status-tag', `status-tag--${statusClass(row.status)}`]">
-                    <span class="status-dot"></span>
+                    <!-- 已提交 -->
+                    <svg v-if="row.status === 2" class="status-icon" viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
+                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+                    </svg>
+                    <!-- 无需评分 -->
+                    <svg v-else-if="row.status === -1" class="status-icon" viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
+                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" clip-rule="evenodd" />
+                    </svg>
+                    <!-- 其他状态用小圆点 -->
+                    <span v-else class="status-dot"></span>
                     {{ getStatusText(row.status) }}
                   </span>
                 </template>
