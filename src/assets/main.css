@@ -9,10 +9,10 @@
   --color-bg-subtle:     #EBEDF2;  /* 略深一层 */
   --color-sidebar:       #FFFFFF;  /* 纯白侧栏 */
   --color-sidebar-hover: #F2F3F7;
-  --color-accent:        #D94444;  /* 亮朱红 */
-  --color-accent-hover:  #C43232;  /* 深亮红 */
-  --color-accent-light:  rgba(217,68,68,0.08);
-  --color-accent-subtle: rgba(217,68,68,0.035);
+  --color-accent:        #D20080;  /* 玫红主色 */
+  --color-accent-hover:  #B8006E;  /* 深玫红 */
+  --color-accent-light:  rgba(210,0,128,0.08);
+  --color-accent-subtle: rgba(210,0,128,0.035);
   --color-gold:          #D4A05A;  /* 金色 */
   --color-jade:          #5B9B76;  /* 玉色 */
   --color-text:          #2C2C3D;  /* 正文 */
@@ -20,7 +20,16 @@
   --color-card:          #FFFFFF;  /* 卡片 */
   --color-border:        #E4E7ED;  /* 边框 */
   --color-border-light:  #EDEFF4;
-  --color-seal-shadow:   rgba(217,68,68,0.18);
+  --color-seal-shadow:   rgba(210,0,128,0.18);
+
+  /* ═══ Element Plus 主色覆盖 — 让所有组件自动用 #D20080 ═══ */
+  --el-color-primary: #D20080;
+  --el-color-primary-dark-2: #A80066;
+  --el-color-primary-light-3: #DF4CA6;
+  --el-color-primary-light-5: #E87FBF;
+  --el-color-primary-light-7: #F2B8DB;
+  --el-color-primary-light-8: #F8D4EB;
+  --el-color-primary-light-9: #FDEBF6;
 
   /* ═══ 字阶 ═══ */
   --font-display: 'Noto Serif SC', 'Source Han Serif SC', 'STSong', 'SimSun', serif;
@@ -37,7 +46,7 @@
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
   --shadow-md: 0 2px 8px rgba(0,0,0,0.05);
   --shadow-lg: 0 4px 20px rgba(0,0,0,0.06);
-  --shadow-seal: 0 2px 12px rgba(217,68,68,0.18);
+  --shadow-seal: 0 2px 12px rgba(210,0,128,0.18);
 }
 
 /* ═══ 基础重置 ═══ */
@@ -101,13 +110,19 @@ body {
    ═══════════════════════════════════════ */
 
 /* ── 按钮 ── */
-.el-button--primary {
-  --el-button-bg-color: var(--color-accent);
-  --el-button-border-color: var(--color-accent);
-  --el-button-hover-bg-color: var(--color-accent-hover);
-  --el-button-hover-border-color: var(--color-accent-hover);
-  --el-button-active-bg-color: var(--color-accent-hover);
-  --el-button-active-border-color: var(--color-accent-hover);
+button.el-button--primary {
+  --el-button-bg-color: #D20080 !important;
+  --el-button-border-color: #D20080 !important;
+  --el-button-hover-bg-color: #B8006E !important;
+  --el-button-hover-border-color: #B8006E !important;
+  --el-button-active-bg-color: #B8006E !important;
+  --el-button-active-border-color: #B8006E !important;
+}
+/* 文字 / 边框类型的 primary 按钮只改文字色 */
+button.el-button--primary.is-text,
+button.el-button--primary.is-link {
+  --el-button-text-color: #D20080 !important;
+  --el-button-hover-text-color: #B8006E !important;
 }
 
 /* ── 表格 ── */
@@ -139,6 +154,14 @@ body {
 .el-pagination {
   font-family: var(--font-body);
   font-size: 13px;
+}
+
+/* 分页 background 模式下选中页颜色 */
+.el-pagination.is-background .el-pager li.is-active {
+  background-color: #D20080 !important;
+}
+.el-pagination.is-background .el-pager li:hover {
+  color: #D20080;
 }
 
 .el-pagination button:hover {
@@ -197,6 +220,15 @@ body {
 .el-input__inner::placeholder {
   color: var(--color-text-muted);
   font-weight: 400;
+}
+
+/* Select 下拉框聚焦边框 */
+.el-select__wrapper.is-focus {
+  box-shadow: 0 0 0 1px var(--color-accent) inset !important;
+}
+
+.el-select__wrapper.is-hovering {
+  box-shadow: 0 0 0 1px var(--color-border) inset !important;
 }
 
 /* ── 数字输入框 ── */
