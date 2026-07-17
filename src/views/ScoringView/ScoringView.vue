@@ -47,6 +47,7 @@ const TAB_STATUS_MAP: Record<string, string | null> = {
   unscored: 'unscored',
   draft: 'draft',
   submitted: 'submitted',
+  no_score: 'no_score',
 }
 
 function checkScreen() {
@@ -344,6 +345,7 @@ onUnmounted(() => {
               <el-tab-pane label="未评分" name="unscored" />
               <el-tab-pane label="已评分" name="draft" />
               <el-tab-pane label="已提交" name="submitted" />
+              <el-tab-pane label="无需评分" name="no_score" />
             </el-tabs>
           </div>
 
