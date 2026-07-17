@@ -305,7 +305,7 @@
 }
 
 .search-field {
-  flex: 0 0 280px;
+  flex: 0 0 320px;
   margin: 0 10px;
 }
 
@@ -327,7 +327,7 @@
 }
 
 .search-input {
-  width: 210px;
+  width: 260px;
 }
 
 .search-icon {
@@ -464,8 +464,8 @@
   gap: 5px;
   padding: 2px 10px 2px 8px;
   border-radius: 6px;
-  background: #f0faf4;
-  color: #1f7b4d;
+  background: #eef7ee;
+  color: #4d8b4d;
   font-weight: 600;
   font-size: 12px;
   border: 1px solid #cde4cd;
@@ -590,14 +590,14 @@
   flex-shrink: 0;
 }
 
-/* 未评 — 奶灰 */
+/* 未评 — 草莓马卡龙 */
 .status-tag--unreviewed {
-  background: #f5f5f7;
-  color: #8e8e96;
-  border-color: #e3e3e8;
+  background: #FFE8EC;
+  color: #D4617A;
+  border-color: #F5CDD5;
 }
 .status-tag--unreviewed .status-dot {
-  background: #c4c4cc;
+  background: #D4617A;
 }
 
 /* 已评 — 蓝莓马卡龙 */

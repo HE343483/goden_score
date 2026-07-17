@@ -130,7 +130,7 @@ async function onScoreBlur(row: ProgramWithScore) {
   const val = store.editingScores[row.code]
   if (val === null || val === undefined) return
   await saveScores({ items: [{ program_id: row.id as number, score: val }] })
-  ElMessage.success('已保存：' + row.name + ' ' + val + '分')
+  ElMessage.success('已评分：' + row.name + ' ' + val + '分')
   await reloadPrograms()
 }
 
@@ -174,7 +174,7 @@ async function logout() {
 function getStatusText(status: number): string {
   switch (status) {
     case 0:   return '未评分'
-    case 1:   return '已保存'
+    case 1:   return '已评分'
     case 2:   return '已提交'
     case -1:  return '无需评分'
     default:  return '—'
@@ -342,7 +342,7 @@ onUnmounted(() => {
             >
               <el-tab-pane label="全部" name="all" />
               <el-tab-pane label="未评分" name="unscored" />
-              <el-tab-pane label="已保存" name="draft" />
+              <el-tab-pane label="已评分" name="draft" />
               <el-tab-pane label="已提交" name="submitted" />
             </el-tabs>
           </div>
@@ -359,10 +359,6 @@ onUnmounted(() => {
               row-key="code"
             >
             <el-table-column
-                type="selection"
-                width="-10"
-              />
-              <el-table-column
                 type="selection"
                 width="44"
                 :selectable="checkSelectable"
