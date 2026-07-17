@@ -36,7 +36,7 @@ watch([filterKeyword, filterSchool, filterStatus], () => {
 async function loadData() {
   loading.value = true
   try {
-    const params: Record<string> = {
+    const params: Record<string, string | number> = {
       page: currentPage.value,
       limit: pageSize.value,
     }

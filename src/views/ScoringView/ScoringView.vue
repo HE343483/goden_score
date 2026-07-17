@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, ElInput } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useScoreStore, type ProgramWithScore } from '@/stores/score'
 import { fetchExpertPrograms, fetchSchools, saveScores, submitScores } from './ScoringView.js'
@@ -20,7 +20,7 @@ const isTablet = ref(false)
 
 /* 控制分数列的输入框切换 */
 const editingCode = ref<string | null>(null)
-const scoreInputRef = ref<ElInput>(null)
+const scoreInputRef = ref<InstanceType<typeof ElInput> | null>(null)
 
 /* 筛选条件（后端传参） */
 const filterKeyword = ref('')
@@ -47,6 +47,7 @@ const TAB_STATUS_MAP: Record<string, string | null> = {
   unscored: 'unscored',
   draft: 'draft',
   submitted: 'submitted',
+  no_score: 'no_score',
 }
 
 function checkScreen() {
@@ -130,7 +131,7 @@ async function onScoreBlur(row: ProgramWithScore) {
   const val = store.editingScores[row.code]
   if (val === null || val === undefined) return
   await saveScores({ items: [{ program_id: row.id as number, score: val }] })
-  ElMessage.success('已保存：' + row.name + ' ' + val + '分')
+  ElMessage.success('已评分：' + row.name + ' ' + val + '分')
   await reloadPrograms()
 }
 
@@ -174,7 +175,7 @@ async function logout() {
 function getStatusText(status: number): string {
   switch (status) {
     case 0:   return '未评分'
-    case 1:   return '已保存'
+    case 1:   return '已评分'
     case 2:   return '已提交'
     case -1:  return '无需评分'
     default:  return '—'
@@ -288,49 +289,41 @@ onUnmounted(() => {
       <div class="content-area">
         <!-- 工具栏 -->
         <div class="search-area">
-          <el-form class="search-form" label-width="100px">
-            <el-row :gutter="24">
-              <el-col :xs="24" :sm="12" :md="6">
-                <el-form-item label="节目编码/名称">
-                  <el-input
-                    v-model="filterKeyword"
-                    placeholder="搜索节目编码/名称"
-                    clearable
-                    @keyup.enter="handleSearch"
-                  />
-                </el-form-item>
-              </el-col>
-              <el-col :xs="24" :sm="12" :md="5">
-                <el-form-item label="参赛学校">
-                  <ExpertSchools
-                    v-model="filterSchoolId"
-                    placeholder="全部学校"
-                  />
-                </el-form-item>
-              </el-col>
-              <el-col :xs="24" :sm="12" :md="5">
-                <el-form-item label="状态">
-                  <el-select
-                    v-model="filterStatus"
-                    placeholder="全部状态"
-                    clearable
-                    style="width: 100%"
-                  >
-                    <el-option :value="null" label="全部状态" />
-                    <el-option value="unscored" label="未评分" />
-                    <el-option value="draft" label="已评分" />
-                    <el-option value="submitted" label="已提交" />
-                    <el-option value="no_score" label="无需评分" />
-                  </el-select>
-                </el-form-item>
-              </el-col>
-              <el-col :xs="24" :sm="12" :md="4">
-                <el-form-item>
-                  <el-button type="primary" @click="handleSearch">搜索</el-button>
-                  <el-button @click="handleReset">重置</el-button>
-                </el-form-item>
-              </el-col>
-            </el-row>
+          <el-form class="search-form" label-width="120px" size="large">
+            <div class="search-form-inner">
+              <el-form-item label="节目编码/名称" class="search-field">
+                <el-input
+                  v-model="filterKeyword"
+                  placeholder="搜索节目编码/名称"
+                  clearable
+                  @keyup.enter="handleSearch"
+                />
+              </el-form-item>
+              <el-form-item label="参赛学校" class="search-field">
+                <ExpertSchools
+                  v-model="filterSchoolId"
+                  placeholder="全部学校"
+                />
+              </el-form-item>
+              <el-form-item label="状态" class="search-field">
+                <el-select
+                  v-model="filterStatus"
+                  placeholder="全部状态"
+                  clearable
+                  style="width: 100%"
+                >
+                  <el-option :value="null" label="全部状态" />
+                  <el-option value="unscored" label="未评分" />
+                  <el-option value="draft" label="已评分" />
+                  <el-option value="submitted" label="已提交" />
+                  <el-option value="no_score" label="无需评分" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="　" class="search-field search-field-buttons">
+                <el-button type="primary" @click="handleSearch">搜索</el-button>
+                <el-button @click="handleReset">重置</el-button>
+              </el-form-item>
+            </div>
           </el-form>
         </div>
         <!-- 评分列表 -->
@@ -350,8 +343,9 @@ onUnmounted(() => {
             >
               <el-tab-pane label="全部" name="all" />
               <el-tab-pane label="未评分" name="unscored" />
-              <el-tab-pane label="已保存" name="draft" />
+              <el-tab-pane label="已评分" name="draft" />
               <el-tab-pane label="已提交" name="submitted" />
+              <el-tab-pane label="无需评分" name="no_score" />
             </el-tabs>
           </div>
 
@@ -367,10 +361,6 @@ onUnmounted(() => {
               row-key="code"
             >
             <el-table-column
-                type="selection"
-                width="-10"
-              />
-              <el-table-column
                 type="selection"
                 width="44"
                 :selectable="checkSelectable"
@@ -437,11 +427,20 @@ onUnmounted(() => {
                 header-align="center"
                 align="center"
                 label="状态"
-                width="100"
+                width="110"
               >
                 <template #default="{ row }">
                   <span :class="['status-tag', `status-tag--${statusClass(row.status)}`]">
-                    <span class="status-dot"></span>
+                    <!-- 已提交 -->
+                    <svg v-if="row.status === 2" class="status-icon" viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
+                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+                    </svg>
+                    <!-- 无需评分 -->
+                    <svg v-else-if="row.status === -1" class="status-icon" viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
+                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" clip-rule="evenodd" />
+                    </svg>
+                    <!-- 其他状态用小圆点 -->
+                    <span v-else class="status-dot"></span>
                     {{ getStatusText(row.status) }}
                   </span>
                 </template>

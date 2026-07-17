@@ -1,13 +1,47 @@
+<template>
+  <div class="customer-levels-dropdown">
+    <el-select
+      v-model="selectedValue"
+      :placeholder="placeholder"
+      :disabled="disabled"
+      :size="size"
+      :loading="loading"
+      filterable
+      remote
+      :remote-method="remoteSearch"
+      @change="handleChange"
+      @clear="handleClear"
+      style="width: 100%"
+      clearable
+    >
+      <el-option
+        v-for="(item, index) in schoolList"
+        :key="item.id ?? index"
+        :label="item.school_name || item.name || String(item.value ?? '')"
+        :value="item[valueField] ?? item.school_name ?? item.name ?? item.id"
+      >
+      </el-option>
+    </el-select>
+  </div>
+</template>
+
 <!-- 学校下拉选择（支持模糊搜索） -->
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import request from '@/utils/request'
-import { ElMessage } from 'element-plus'
+
+interface SchoolItem {
+  id?: number | string
+  school_name?: string
+  name?: string
+  value?: number | string
+  [key: string]: any
+}
 
 // Props
 const props = defineProps({
   modelValue: {
-    type: [String, Number, Object],
+    type: [String, Number, Object] as unknown as () => string | number | Record<string, any>,
     default: '',
   },
   placeholder: {
@@ -29,7 +63,10 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['update:modelValue', 'change'])
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: string | number | Record<string, any>): void
+  (e: 'change', value: string | number | Record<string, any>): void
+}>()
 
 // 学校列表
 const schools = ref([])
@@ -88,6 +125,7 @@ const fetchSchools = async (keyword = '') => {
       (body.code !== undefined && body.code !== 0)
     if (explicitFail) {
       throw new Error(body.msg || '获取学校列表失败')
+      throw new Error(body.msg || '获取学校列表失败')
     }
 
     const raw = body.data
@@ -136,14 +174,30 @@ const handleVisibleChange = (visible: boolean) => {
   }
 }
 
-// 处理选择变化
-const handleChange = (value) => {
+/**
+ * 远程搜索回调 — 用户输入时触发
+ */
+const remoteSearch = (keyword: string) => {
+  fetchSchools(keyword)
+}
+
+/**
+ * 选择变化
+ */
+const handleChange = (value: string | number | Record<string, any>) => {
   selectedValue.value = value
   emit('update:modelValue', value)
   emit('change', value)
 }
 
-// 组件挂载时获取数据
+/**
+ * 清空时恢复初始列表
+ */
+const handleClear = () => {
+  fetchSchools()
+}
+
+// 组件挂载时加载全部学校（下拉框初始展开有数据）
 onMounted(() => {
   fetchSchools()
 })
