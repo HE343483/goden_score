@@ -459,8 +459,16 @@
 }
 
 .score-submitted {
-  color: #ff0000;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 10px 2px 8px;
+  border-radius: 6px;
+  background: #f0faf4;
+  color: #1f7b4d;
   font-weight: 600;
+  font-size: 12px;
+  border: 1px solid #cde4cd;
 }
 
 .cat-tag {
@@ -561,10 +569,10 @@
 .status-tag {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 2px 10px 2px 8px;
+  gap: 4px;
+  padding: 2px 5px;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   line-height: 1.5;
   border: 1px solid transparent;
