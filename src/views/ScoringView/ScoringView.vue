@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, ElInput } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useScoreStore, type ProgramWithScore } from '@/stores/score'
 import { fetchExpertPrograms, fetchSchools, saveScores, submitScores, STATUS_TO_API } from './ScoringView.js'
@@ -20,7 +20,7 @@ const isTablet = ref(false)
 
 /* 控制分数列的输入框切换 */
 const editingCode = ref<string | null>(null)
-const scoreInputRef = ref<ElInput>(null)
+const scoreInputRef = ref<InstanceType<typeof ElInput> | null>(null)
 
 /* 筛选条件（后端传参） */
 const filterKeyword = ref('')
@@ -288,49 +288,41 @@ onUnmounted(() => {
       <div class="content-area">
         <!-- 工具栏 -->
         <div class="search-area">
-          <el-form class="search-form" label-width="100px">
-            <el-row :gutter="24">
-              <el-col :xs="24" :sm="12" :md="6">
-                <el-form-item label="节目编码/名称">
-                  <el-input
-                    v-model="filterKeyword"
-                    placeholder="搜索节目编码/名称"
-                    clearable
-                    @keyup.enter="handleSearch"
-                  />
-                </el-form-item>
-              </el-col>
-              <el-col :xs="24" :sm="12" :md="5">
-                <el-form-item label="参赛学校">
-                  <ExpertSchools
-                    v-model="filterSchoolId"
-                    placeholder="全部学校"
-                  />
-                </el-form-item>
-              </el-col>
-              <el-col :xs="24" :sm="12" :md="5">
-                <el-form-item label="状态">
-                  <el-select
-                    v-model="filterStatus"
-                    placeholder="全部状态"
-                    clearable
-                    style="width: 100%"
-                  >
-                    <el-option :value="null" label="全部状态" />
-                    <el-option value="unscored" label="未评分" />
-                    <el-option value="draft" label="已评分" />
-                    <el-option value="submitted" label="已提交" />
-                    <el-option value="no_score" label="无需评分" />
-                  </el-select>
-                </el-form-item>
-              </el-col>
-              <el-col :xs="24" :sm="12" :md="4">
-                <el-form-item>
-                  <el-button type="primary" @click="handleSearch">搜索</el-button>
-                  <el-button @click="handleReset">重置</el-button>
-                </el-form-item>
-              </el-col>
-            </el-row>
+          <el-form class="search-form" label-width="120px" size="large">
+            <div class="search-form-inner">
+              <el-form-item label="节目编码/名称" class="search-field">
+                <el-input
+                  v-model="filterKeyword"
+                  placeholder="搜索节目编码/名称"
+                  clearable
+                  @keyup.enter="handleSearch"
+                />
+              </el-form-item>
+              <el-form-item label="参赛学校" class="search-field">
+                <ExpertSchools
+                  v-model="filterSchoolId"
+                  placeholder="全部学校"
+                />
+              </el-form-item>
+              <el-form-item label="状态" class="search-field">
+                <el-select
+                  v-model="filterStatus"
+                  placeholder="全部状态"
+                  clearable
+                  style="width: 100%"
+                >
+                  <el-option :value="null" label="全部状态" />
+                  <el-option value="unscored" label="未评分" />
+                  <el-option value="draft" label="已评分" />
+                  <el-option value="submitted" label="已提交" />
+                  <el-option value="no_score" label="无需评分" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="　" class="search-field search-field-buttons">
+                <el-button type="primary" @click="handleSearch">搜索</el-button>
+                <el-button @click="handleReset">重置</el-button>
+              </el-form-item>
+            </div>
           </el-form>
         </div>
         <!-- 评分列表 -->

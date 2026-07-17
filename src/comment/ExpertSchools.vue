@@ -4,10 +4,18 @@ import { ref, onMounted, watch } from 'vue'
 import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
 
+interface SchoolItem {
+  id?: number | string
+  school_name?: string
+  name?: string
+  value?: number | string
+  [key: string]: any
+}
+
 // Props
 const props = defineProps({
   modelValue: {
-    type: [String, Number, Object],
+    type: [String, Number, Object] as unknown as () => string | number | Record<string, any>,
     default: '',
   },
   placeholder: {
@@ -29,16 +37,19 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['update:modelValue', 'change'])
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: string | number | Record<string, any>): void
+  (e: 'change', value: string | number | Record<string, any>): void
+}>()
 
 // 客户等级列表
-const customerLevels = ref([])
+const customerLevels = ref<SchoolItem[]>([])
 // 加载状态
 const loading = ref(false)
 // 错误信息
 const error = ref('')
 // 本地选中值，避免直接修改modelValue
-const selectedValue = ref(props.modelValue)
+const selectedValue = ref<string | number | Record<string, any>>(props.modelValue)
 
 // 监听modelValue变化，更新本地选中值
 watch(
@@ -46,7 +57,7 @@ watch(
   (newValue) => {
     if (newValue && typeof newValue === 'object') {
       // 如果是对象，尝试提取ID
-      const id = newValue.id || newValue[props.valueField]
+      const id = (newValue as Record<string, any>).id || newValue[props.valueField as keyof typeof newValue]
       if (id !== undefined) {
         selectedValue.value = id
         emit('update:modelValue', id)
@@ -56,7 +67,7 @@ watch(
         selectedValue.value = newValue
       }
     } else {
-      selectedValue.value = newValue
+      selectedValue.value = newValue as string | number
     }
   },
   { immediate: true },
@@ -68,7 +79,7 @@ const fetchCustomerLevels = async () => {
     loading.value = true
     error.value = ''
     const response = await request.get('/expert/schools', {
-      validateStatus: (status) => status < 500,
+      validateStatus: (status: number) => status < 500,
     })
 
     if (response.status === 401) {
@@ -86,9 +97,9 @@ const fetchCustomerLevels = async () => {
       throw new Error(body.msg || '获取客户等级列表失败')
     }
 
-    const raw = body.data
-    const list = Array.isArray(raw) ? raw : Array.isArray(raw?.list) ? raw.list : []
-    customerLevels.value = list.map((item, idx) => {
+    const raw: unknown = body.data
+    const list: SchoolItem[] = Array.isArray(raw) ? raw : Array.isArray((raw as any)?.list) ? (raw as any).list : []
+    customerLevels.value = list.map((item: SchoolItem, idx: number) => {
       const id = item.id ?? idx
       const school_name = item.school_name ?? item.name ?? String(item.value ?? '')
       return { ...item, id, school_name }
@@ -96,19 +107,20 @@ const fetchCustomerLevels = async () => {
 
     // 如果当前selectedValue是对象，尝试提取其ID或名称以匹配选项
     if (selectedValue.value && typeof selectedValue.value === 'object') {
+      const sv = selectedValue.value as Record<string, any>
       const match = customerLevels.value.find(
-        (item) =>
-          item.id === selectedValue.value.id ||
-          item.school_name === selectedValue.value.school_name,
+        (item: SchoolItem) =>
+          item.id === sv.id ||
+          item.school_name === sv.school_name,
       )
       if (match) {
-        selectedValue.value = match[props.valueField] || match.school_name || match.name
+        selectedValue.value = match[props.valueField as keyof SchoolItem] || match.school_name || match.name
         emit('update:modelValue', selectedValue.value)
       }
     }
-  } catch (err) {
+  } catch (err: unknown) {
     console.error('获取客户等级列表失败:', err)
-    error.value = err.message || '获取客户等级列表失败'
+    error.value = err instanceof Error ? err.message : '获取客户等级列表失败'
     ElMessage.error(error.value)
     customerLevels.value = []
   } finally {
@@ -117,7 +129,7 @@ const fetchCustomerLevels = async () => {
 }
 
 // 处理选择变化
-const handleChange = (value) => {
+const handleChange = (value: string | number | Record<string, any>) => {
   selectedValue.value = value
   emit('update:modelValue', value)
   emit('change', value)

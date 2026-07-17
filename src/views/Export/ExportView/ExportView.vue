@@ -19,7 +19,7 @@ const statsData = ref({
 const totalCount = ref(0)
 
 async function reloadPrograms() {
-  const params: Record<string> = {
+  const params: Record<string, string | number> = {
     page: page.value,
     limit: pageSize,
   }
