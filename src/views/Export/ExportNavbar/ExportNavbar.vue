@@ -39,7 +39,7 @@ async function logout() {
         </div>
         <div class="header-brand">
           <span class="header-title">管理平台</span>
-          <span class="header-subtitle">四川省大学生艺术展演</span>
+          <span class="header-subtitle">四川省第十一届大学生艺术展演活动</span>
         </div>
       </div>
       <div class="header-right">
@@ -75,7 +75,7 @@ async function logout() {
 
     <!-- 页脚 -->
     <footer class="app-footer">
-      <span class="footer-text">© 四川省大学生艺术展演 · 评鉴录</span>
+      <span class="footer-text">© 四川省第十一届大学生艺术展演活动 · 评分系统</span>
     </footer>
   </div>
 </template>
@@ -138,7 +138,11 @@ async function logout() {
 .header-subtitle {
   font-size: 11px;
   color: var(--color-text-muted);
-  letter-spacing: 2px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
 }
 
 .header-right {

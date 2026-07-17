@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useScoreStore, type ProgramWithScore } from '@/stores/score'
-import { fetchExpertPrograms, saveScores, submitScores } from './ScoringView.js'
+import { fetchExpertPrograms, fetchSchools, saveScores, submitScores, STATUS_TO_API } from './ScoringView.js'
 import ExpertSchools from '@/comment/ExpertSchools.vue'
 
 const router = useRouter()
@@ -26,6 +26,18 @@ const scoreInputRef = ref<ElInput>(null)
 const filterKeyword = ref('')
 const filterStatus = ref<string | null>(null)    // API 字符串：unscored / draft / submitted / no_score
 const filterSchoolId = ref<number | ''>('')
+/** 学校列表选项（从 API 加载） */
+const schoolOptions = ref<Array<{ id: number; school_name: string }>>([])
+
+async function fetchSchoolOptions() {
+  try {
+    const res = await fetchSchools()
+    const body = res?.data ?? res ?? { data: [] }
+    schoolOptions.value = Array.isArray(body) ? body : Array.isArray(body.data) ? body.data : []
+  } catch {
+    schoolOptions.value = []
+  }
+}
 
 const total = ref(0)
 
@@ -189,7 +201,10 @@ function closeSidebar() {
 
 onMounted(async () => {
   store.loading = true
-  await reloadPrograms()
+  await Promise.all([
+    reloadPrograms(),
+    fetchSchoolOptions(),
+  ])
   checkScreen()
   window.addEventListener('resize', checkScreen)
 })
@@ -219,7 +234,7 @@ onUnmounted(() => {
           class="sidebar-seal" />
         <div class="sidebar-brand-text">
           <span class="sidebar-title">评分系统</span>
-          <span class="sidebar-subtitle">艺术展演</span>
+          <span class="sidebar-subtitle">四川省第十一届大学生艺术展演活动</span>
         </div>
       </div>
 
@@ -228,7 +243,7 @@ onUnmounted(() => {
         class="sidebar-menu"
         background-color="#FFFFFF"
         text-color="#6B6B7B"
-        active-text-color="#D94444"
+        active-text-color="#D20080"
       >
         <el-menu-item index="scoring">
           <template #title>
@@ -477,6 +492,8 @@ onUnmounted(() => {
             :page-size="limit"
             :total="total"
             layout="total, sizes, prev, pager, next"
+            background
+            size="small"
             @size-change="handleSizeChange"
             @current-change="handleCurrentChange"
           />
@@ -485,7 +502,7 @@ onUnmounted(() => {
 
       <!-- 页脚 -->
       <footer class="app-footer">
-        <span class="footer-text">@copyright 四川省大学生艺术展演 · 评分系统</span>
+        <span class="footer-text">@copyright 四川省第十一届大学生艺术展演活动 · 评分系统</span>
       </footer>
     </div>
   </div>
@@ -517,5 +534,10 @@ onUnmounted(() => {
 :deep(.el-table .el-table-column--selection .el-checkbox.is-disabled .el-checkbox__inner) {
   background-color: #dbdee3 !important;
   border-color: #d0d3d9 !important;
+}
+/* 勾选框放大 */
+:deep(.el-table .el-table-column--selection .el-checkbox) {
+  transform: scale(1.35);
+  transform-origin: center;
 }
 </style>

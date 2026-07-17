@@ -50,22 +50,21 @@ function submit() {
         />
       </div>
 
-      <el-text
-        tag="h1"
-        class="login-title"
-        :style="{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, letterSpacing: '3px', lineHeight: '1.4', marginTop: '18px', padding: '0 32px' }"
-      >
-        四川省大学生艺术展演
-      </el-text>
-
-      <el-text
-        tag="p"
-        type="info"
-        size="small"
-        class="login-subtitle"
-      >
-        评 分 系 统
-      </el-text>
+      <div class="login-title-group">
+        <el-text
+          tag="h1"
+          class="login-title"
+        >
+          四川省第十一届大学生艺术展演活动
+        </el-text>
+        <div class="login-title-divider"></div>
+        <el-text
+          tag="p"
+          class="login-subtitle"
+        >
+          评分系统
+        </el-text>
+      </div>
 
       <el-form
         ref="formRef"
@@ -116,7 +115,41 @@ function submit() {
   background: var(--color-bg);
   position: relative;
   overflow: hidden;
+  /* 主色调覆盖 — #D20080（给 .bg-seal 这类模板内的元素用） */
+  --color-accent: #D20080;
+  --color-accent-hover: #B8006E;
+  --color-accent-light: rgba(210, 0, 128, 0.08);
+  --color-accent-subtle: rgba(210, 0, 128, 0.035);
+  --color-seal-shadow: rgba(210, 0, 128, 0.18);
 }
+/* 选中文字颜色 → 蓝色 */
+.login-page ::selection {
+  background: #1890ff;
+  color: #fff;
+}
+
+/* ──────────────────────────────────────────────
+   ↓↓↓ 以下 :deep 直接给 Element Plus 组件硬编码 #D20080，
+       不依赖 CSS 变量穿透，确保 100% 生效 ↓↓↓
+   ────────────────────────────────────────────── */
+
+/* ① 登录按钮 ──── 主色、悬浮、点击 */
+:deep(.el-button--primary.login-btn) {
+  --el-button-bg-color: #D20080 !important;
+  --el-button-border-color: #D20080 !important;
+  --el-button-hover-bg-color: #B8006E !important;
+  --el-button-hover-border-color: #B8006E !important;
+  --el-button-active-bg-color: #B8006E !important;
+  --el-button-active-border-color: #B8006E !important;
+}
+
+/* ② 输入框聚焦 ── 边框 + 光晕 */
+:deep(.el-input__wrapper.is-focus) {
+  border-color: #D20080 !important;
+  box-shadow: 0 0 0 3px rgba(210, 0, 128, 0.08) !important;
+}
+
+/* ────────────────────────────────────────────── */
 
 .bg-seal {
   position: absolute;
@@ -153,7 +186,7 @@ function submit() {
 .login-card {
   position: relative;
   z-index: 1;
-  width: 400px;
+  width: 600px;
   border-radius: var(--radius-lg) !important;
   box-shadow: var(--shadow-lg) !important;
   border: none !important;
@@ -173,21 +206,47 @@ function submit() {
 }
 
 .login-logo {
-  width: 120px;
-  height: 120px;
-  border-radius: 16px;
+  width: 160px;
+  height: 160px;
+  border-radius: 24px;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   background: var(--color-card);
 }
 
+/* 标题组 */
+.login-title-group {
+  margin-top: 28px;
+  padding: 0 40px;
+  text-align: center;
+}
+.login-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  line-height: 1.4;
+  color: var(--color-text);
+  margin: 0;
+  white-space: nowrap;
+}
+.login-title-divider {
+  width: 80px;
+  height: 3px;
+  background: var(--color-accent);
+  margin: 16px auto;
+  border-radius: 2px;
+}
 .login-subtitle {
-  letter-spacing: 8px;
-  margin-top: 5px;
+  font-family: var(--font-display);
+  font-size: 22px;
+  letter-spacing: 10px;
+  color: var(--color-text-muted);
+  margin: 0 0 0 0;
 }
 
 .login-form {
   margin-top: 28px;
-  padding: 0 40px;
+  padding: 0 24px;
 }
 
 .login-form :deep(.el-input__wrapper) {
@@ -220,6 +279,10 @@ function submit() {
   font-weight: 400;
 }
 
+.login-btn {
+  height: 50px;
+  font-size: 18px !important;
+}
 .login-btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px var(--color-seal-shadow);
@@ -247,7 +310,7 @@ function submit() {
 }
 
 @media (max-width: 1024px) {
-  .login-card { width: 380px; }
+  .login-card { width: 520px; }
   .login-form { padding: 0 32px; }
 }
 

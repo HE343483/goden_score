@@ -204,6 +204,16 @@
   border-radius: 4px;
 }
 
+/* 序号列 — 水平居中 & 垂直居中 */
+.el-table :deep(td:first-child) {
+  padding-left: 0 !important;
+}
+.el-table :deep(td:first-child .cell) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .name-cell {
   font-weight: 500;
   color: var(--color-text);
