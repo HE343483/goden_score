@@ -513,4 +513,9 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
 }
+/* 禁用态复选框颜色加深，区分"可选"与"不可选" */
+:deep(.el-table .el-table-column--selection .el-checkbox.is-disabled .el-checkbox__inner) {
+  background-color: #dbdee3 !important;
+  border-color: #d0d3d9 !important;
+}
 </style>
