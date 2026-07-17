@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useScoreStore, type ProgramWithScore } from '@/stores/score'
-import { fetchExpertPrograms, fetchSchools, saveScores, submitScores, STATUS_TO_API } from './ScoringView.js'
+import { fetchExpertPrograms, fetchSchools, saveScores, submitScores } from './ScoringView.js'
 import ExpertSchools from '@/comment/ExpertSchools.vue'
 
 const router = useRouter()

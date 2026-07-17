@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useScoreStore, type ProgramWithScore } from '@/stores/score'
-import { fetchAdminPrograms, fetchAdminStats, updateExemption } from './ExportView.js'
-import ExportDialog from './comment/ExportDialog.vue'
+import { fetchAdminPrograms, fetchAdminStats, updateExemption, exportData } from './ExportView.js'
 import DetailDialog from './comment/DetailDialog.vue'
 import ExpertSchools from '@/comment/ExpertSchools.vue'
 
@@ -19,7 +18,7 @@ const statsData = ref({
 const totalCount = ref(0)
 
 async function reloadPrograms() {
-  const params: Record<string> = {
+  const params: Record<string, string | number> = {
     page: page.value,
     limit: pageSize,
   }
@@ -41,27 +40,12 @@ onMounted(async () => {
   statsData.value = statsRes
 })
 
-/* ── 大类下拉选项（前端写死6个大类） ── */
+/* ── 大类下拉选项 ── */
 const filterCategory = ref('')
 const filterSchool = ref('')
 const filterGroup = ref('')
 const majorCategories = ['艺术表演类（集体项目）', '艺术表演类（个人项目）', '学生艺术作品类', '高校校长作品类', '艺术实践工作坊', '优秀成果申报']
 const groupLevels = ['甲组', '乙组', '校长', '-']
-
-/* ── 导出弹窗分类树 ── */
-interface CatGroup {
-  label: string
-  teamType?: string
-  children?: { label: string; keyword: string }[]
-}
-const EXPORT_CATEGORIES: CatGroup[] = [
-  { label: '艺术表演类（集体项目）' },
-  { label: '艺术表演类（个人项目）' },
-  { label: '学生艺术作品类'},
-  { label: '高校校长作品类'},
-  { label: '艺术实践工作坊'},
-  { label: '优秀成果申报'},
-]
 
 /* 所有数据（后端已筛选+分页，直接使用） */
 const allData = computed(() => store.allPrograms)
@@ -111,13 +95,6 @@ function formatScore(score: number | null): string {
   return Number(score).toFixed(1)
 }
 
-/* ── 导出弹窗 ── */
-const exportDialogVisible = ref(false)
-
-function openExportDialog() {
-  exportDialogVisible.value = true
-}
-
 /* ── 详情弹窗 ── */
 const detailDialogVisible = ref(false)
 const detailProgram = ref<ProgramWithScore | null>(null)
@@ -140,6 +117,38 @@ async function handleDelete(row: ProgramWithScore) {
       await reloadPrograms()
       ElMessage.success(`${row.code} 已标记为弃赛`)
     } catch { /* error handled by interceptor */ }
+  }
+}
+
+/* ── 导出 ── */
+/** 导出类型 → 表名映射 */
+const EXPORT_LABEL_MAP: Record<string, string> = {
+  score: '成绩汇总表',
+  public: '成绩排名公示表',
+  expert: '专家评分汇总表',
+}
+
+async function handleExport(exportType: string) {
+  if (!filterCategory.value) {
+    ElMessage.warning('请先选择节目类型')
+    return
+  }
+  const label = EXPORT_LABEL_MAP[exportType] ?? exportType
+  try {
+    await ElMessageBox.confirm(
+      `确定导出「${filterCategory.value}」的「${label}」吗？`,
+      '确认导出',
+      { confirmButtonText: '确定', cancelButtonText: '取消', type: 'info' }
+    )
+    exporting.value = true
+    await exportData({ score: 1, public: 2, expert: 3 }[exportType] ?? 1, {
+      category: filterCategory.value,
+    })
+    ElMessage.success('导出成功')
+  } catch {
+    // 取消或失败
+  } finally {
+    exporting.value = false
   }
 }
 </script>
@@ -178,24 +187,6 @@ async function handleDelete(row: ProgramWithScore) {
       </el-form-item>
     </el-col>
     <el-col :xs="24" :sm="12" :md="7">
-      <el-form-item label="节目类型" prop="category">
-        <el-select
-          v-model="filterCategory"
-          placeholder="全部大类"
-          clearable
-          class="search-input"
-          style="width: 230px"
-        >
-          <el-option
-            v-for="cat in majorCategories"
-            :key="cat"
-            :label="cat"
-            :value="cat"
-          />
-        </el-select>
-      </el-form-item>
-    </el-col>
-    <el-col :xs="24" :sm="12" :md="7">
       <el-form-item label="组别" prop="group">
         <el-select
           v-model="filterGroup"
@@ -209,6 +200,24 @@ async function handleDelete(row: ProgramWithScore) {
             :key="g"
             :label="g === '-' ? '无组别' : g"
             :value="g"
+          />
+        </el-select>
+      </el-form-item>
+    </el-col>
+    <el-col :xs="24" :sm="12" :md="7">
+      <el-form-item label="节目类型" prop="category">
+        <el-select
+          v-model="filterCategory"
+          placeholder="全部大类"
+          clearable
+          class="search-input"
+          style="width: 230px"
+        >
+          <el-option
+            v-for="cat in majorCategories"
+            :key="cat"
+            :label="cat"
+            :value="cat"
           />
         </el-select>
       </el-form-item>
@@ -252,13 +261,29 @@ async function handleDelete(row: ProgramWithScore) {
         <el-button
           type="primary"
           size="default"
+          :disabled="!filterCategory"
           :loading="exporting"
-          :class="{ 'seal-btn': !exporting }"
-          @click="openExportDialog"
+          @click="handleExport('score')"
         >
-          <span class="seal-btn-inner">
-            <span>导出</span>
-          </span>
+          导出成绩汇总表
+        </el-button>
+        <el-button
+          type="success"
+          size="default"
+          :disabled="!filterCategory"
+          :loading="exporting"
+          @click="handleExport('public')"
+        >
+          导出成绩排名公示表
+        </el-button>
+        <el-button
+          type="warning"
+          size="default"
+          :disabled="!filterCategory"
+          :loading="exporting"
+          @click="handleExport('expert')"
+        >
+          导出专家评分汇总表
         </el-button>
       </div>
     </div>
@@ -325,12 +350,6 @@ async function handleDelete(row: ProgramWithScore) {
       />
     </div>
   </div>
-
-  <!-- ═══ 导出弹窗（组件） ═══ -->
-  <ExportDialog
-    v-model:visible="exportDialogVisible"
-    :category-tree="EXPORT_CATEGORIES"
-  />
 
   <!-- ═══ 详情弹窗（组件） ═══ -->
   <DetailDialog
