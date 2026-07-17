@@ -7,15 +7,15 @@ import request from '@/utils/request'
 /**
  * 获取专家列表
  * GET /api/admin/experts
- * @param {{ page?: number, limit?: number, keyword?: string, status?: string, school_id?: number }} params
+ * @param {{ page?: number, limit?: number, keyword?: string, status?: string, school_name?: string }} params
  * @returns {Promise<{ list: Array, total: number }>}
  */
 export async function fetchExperts(params = {}) {
-  const { page = 1, limit = 15, keyword, status, school_id } = params
+  const { page = 1, limit = 15, keyword, status, school_name } = params
   const query = { page, limit }
   if (keyword) query.keyword = keyword
   if (status) query.status = status
-  if (school_id !== undefined) query.school_id = school_id
+  if (school_name) query.school_name = school_name
   const res = await request.get('/admin/experts', { params: query })
   return {
     list: (res.data?.data ?? []).map(mapExpertApi),

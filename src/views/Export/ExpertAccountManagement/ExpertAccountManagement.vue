@@ -42,7 +42,7 @@ async function loadData() {
     }
     if (filterKeyword.value) params.keyword = filterKeyword.value
     if (filterStatus.value) params.status = filterStatus.value
-    if (filterSchool.value) params.school_id = filterSchool.value
+    if (filterSchool.value) params.school_name = filterSchool.value
     const res = await fetchExperts(params)
     allExperts.value = res.list
     totalCount.value = res.total
@@ -135,7 +135,11 @@ onMounted(() => {
         </el-col>
         <el-col :xs="24" :sm="12" :md="5">
         <el-form-item label="学校">
-          <ExpertSchools v-model="filterSchool" style="width: 240px" />
+          <ExpertSchools
+          v-model="filterSchool"
+          value-field="school_name"
+          style="width: 240px"
+          />
         </el-form-item>
         </el-col>
         <el-col :xs="24" :sm="12" :md="5">
