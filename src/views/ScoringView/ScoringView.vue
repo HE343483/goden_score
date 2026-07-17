@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowDown } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { useScoreStore, type ProgramWithScore } from '@/stores/score'
-import { fetchExpertPrograms, saveScores, submitScores, STATUS_TO_API } from './ScoringView.js'
+import { fetchExpertPrograms, saveScores, submitScores } from './ScoringView.js'
 import ExpertSchools from '@/comment/ExpertSchools.vue'
 
 const router = useRouter()
@@ -23,23 +22,29 @@ const isTablet = ref(false)
 const editingCode = ref<string | null>(null)
 const scoreInputRef = ref<ElInput>(null)
 
-/* 学校下拉框值（school_id） */
+/* 筛选条件（后端传参） */
+const filterKeyword = ref('')
+const filterStatus = ref<string | null>(null)    // API 字符串：unscored / draft / submitted / no_score
 const filterSchoolId = ref<number | ''>('')
+
+const total = ref(0)
+
+/* tab 名称 → API status 字符串 */
+const TAB_STATUS_MAP: Record<string, string | null> = {
+  all: null,
+  unscored: 'unscored',
+  draft: 'draft',
+  submitted: 'submitted',
+}
 
 function checkScreen() {
   isTablet.value = window.innerWidth <= 1024
   if (!isTablet.value) sidebarOpen.value = false
 }
 
-const paginatedData = computed(() => store.allPrograms)
-const total = ref(0)
-
 function handleTabClick(tab: { props: { name: string } }) {
   page.value = 1
-  if (tab.props.name === 'all') store.filterStatus = null
-  else if (tab.props.name === 'unscored') store.filterStatus = 0
-  else if (tab.props.name === 'draft') store.filterStatus = 1
-  else if (tab.props.name === 'submitted') store.filterStatus = 2
+  filterStatus.value = TAB_STATUS_MAP[tab.props.name] ?? null
   reloadPrograms()
 }
 
@@ -54,20 +59,23 @@ function handleCurrentChange(val: number) {
   reloadPrograms()
 }
 
+/** 点击搜索按钮 */
 function handleSearch() {
-  refresh()
+  page.value = 1
+  reloadPrograms()
 }
 
-watch(paginatedData, (list) => {
-  const scores: Record<string, number> = {}
-  list.forEach(d => {
-    if (d.status === 0) {
-      scores[d.code] = d.score ?? 0
-    }
-  })
-  store.editingScores = { ...scores, ...store.editingScores }
-}, { immediate: true })
+/** 重置所有筛选条件 */
+function handleReset() {
+  filterKeyword.value = ''
+  filterStatus.value = null
+  filterSchoolId.value = ''
+  tabActive.value = 'all'
+  page.value = 1
+  reloadPrograms()
+}
 
+/* 切换分数列的编辑状态 */
 function onSelectionChange(selection: ProgramWithScore[]) {
   store.selectedCodes = selection.map(s => s.code)
 }
@@ -83,7 +91,6 @@ function startEdit(row: ProgramWithScore) {
 }
 
 function checkSelectable(row: ProgramWithScore): boolean {
-  // status 0: 编辑中的分数必须有效且 > 0; status 1: 已有保存的分数且 > 0
   if (row.status === 0) {
     const s = store.editingScores[row.code]
     return s !== null && s !== undefined && s > 0 && s <= 100
@@ -95,12 +102,14 @@ function checkSelectable(row: ProgramWithScore): boolean {
 async function reloadPrograms() {
   try {
     const { list, total: totalCount } = await fetchExpertPrograms({
-      limit: 100,
-      school_name: store.school || undefined,
+      page: page.value,
+      limit: limit.value,
+      keyword: filterKeyword.value || undefined,
+      status: filterStatus.value || undefined,
+      school_id: filterSchoolId.value || undefined,
     })
     store.setPrograms(list)
     total.value = totalCount
-    filterData()
   } catch { /* 拦截器已弹提示 */ }
 }
 
@@ -108,10 +117,8 @@ async function onScoreBlur(row: ProgramWithScore) {
   editingCode.value = null
   const val = store.editingScores[row.code]
   if (val === null || val === undefined) return
-  // 失焦后自动保存
   await saveScores({ items: [{ program_id: row.id as number, score: val }] })
   ElMessage.success('已保存：' + row.name + ' ' + val + '分')
-  // 重新拉取列表，同步后端最新状态
   await reloadPrograms()
 }
 
@@ -122,7 +129,6 @@ async function submitAllSelected() {
   if (selected.length === 0) {
     return ElMessage.warning('请先勾选要提交的项目')
   }
-  // 只提交有效的（有分数的）
   const items: { program_id: number; score: number }[] = []
   selected.forEach(row => {
     if (row.status === 0) {
@@ -143,12 +149,8 @@ async function submitAllSelected() {
     { confirmButtonText: '确定', cancelButtonText: '取消', type: 'info' }
   ).then(async () => {
     await submitScores({ items })
-    items.forEach(it => {
-      const row = store.allPrograms.find(p => p.id === it.program_id)
-      if (row) store.submitToFinal(row.code)
-    })
     ElMessage.success(`已提交 ${items.length} 个评分`)
-    total.value = filterData()
+    await reloadPrograms()
   }).catch(() => {})
 }
 
@@ -156,6 +158,7 @@ async function logout() {
   const ok = await auth.logout()
   if (ok) router.push('/')
 }
+
 function getStatusText(status: number): string {
   switch (status) {
     case 0:   return '未评分'
@@ -270,57 +273,48 @@ onUnmounted(() => {
       <div class="content-area">
         <!-- 工具栏 -->
         <div class="search-area">
-          <el-form :model="store" class="search-form" label-width="120px">
+          <el-form class="search-form" label-width="100px">
             <el-row :gutter="24">
               <el-col :xs="24" :sm="12" :md="6">
-            <el-form-item label="节目编码/名称" prop="keyword" >
-            <el-input
-              width="100%"
-              v-model="store.keyword"
-              placeholder="搜索节目编码/名称"
-              clearable
-              class="search-input"
-            />
-          </el-form-item>
-          </el-col>
-          <el-col :xs="24" :sm="12" :md="6">
-            <el-form-item label="参赛学校" prop="school">
-            <el-select
-              v-model="store.school"
-              placeholder="学校名称模糊搜索"
-              clearable
-              filterable
-              :suffix-icon="ArrowDown"
-              class="search-input"
-              @change="refresh"
-            >
-              <el-option
-                v-for="item in schoolOptions"
-                :key="item.id"
-                :label="item.school_name"
-                :value="item.school_name"
-              />
-            </el-select>
-          </el-form-item>
-          </el-col>
-          <el-col :xs="24" :sm="12" :md="6">
-            <el-form-item label="状态" prop="filterStatus">
-            <el-select
-              v-model="store.filterStatus"
-              placeholder="全部状态"
-              clearable
-              class="status-select"
-              @change="refresh"
-              @clear="store.filterStatus = null"
-            >
-              <el-option :value="null" label="全部状态" />
-              <el-option :value="0" label="未评分" />
-              <el-option :value="1" label="已评分" />
-              <el-option :value="2" label="已提交" />
-              <el-option :value="-1" label="无需评分" />
-            </el-select>
-          </el-form-item>
-          </el-col>
+                <el-form-item label="节目编码/名称">
+                  <el-input
+                    v-model="filterKeyword"
+                    placeholder="搜索节目编码/名称"
+                    clearable
+                    @keyup.enter="handleSearch"
+                  />
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :sm="12" :md="5">
+                <el-form-item label="参赛学校">
+                  <ExpertSchools
+                    v-model="filterSchoolId"
+                    placeholder="全部学校"
+                  />
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :sm="12" :md="5">
+                <el-form-item label="状态">
+                  <el-select
+                    v-model="filterStatus"
+                    placeholder="全部状态"
+                    clearable
+                    style="width: 100%"
+                  >
+                    <el-option :value="null" label="全部状态" />
+                    <el-option value="unscored" label="未评分" />
+                    <el-option value="draft" label="已评分" />
+                    <el-option value="submitted" label="已提交" />
+                    <el-option value="no_score" label="无需评分" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :sm="12" :md="4">
+                <el-form-item>
+                  <el-button type="primary" @click="handleSearch">搜索</el-button>
+                  <el-button @click="handleReset">重置</el-button>
+                </el-form-item>
+              </el-col>
             </el-row>
           </el-form>
         </div>
@@ -350,7 +344,7 @@ onUnmounted(() => {
           <div class="table-wrapper">
             <el-table
               ref="multipleTableRef"
-              :data="paginatedData"
+              :data="store.allPrograms"
               border
               size="small"
               style="width:100%"
