@@ -1,34 +1,8 @@
-<template>
-  <div class="customer-levels-dropdown">
-    <el-select
-      v-model="selectedValue"
-      :placeholder="placeholder"
-      :disabled="disabled"
-      :size="size"
-      :loading="loading"
-      filterable
-      remote
-      :remote-method="remoteSearch"
-      @change="handleChange"
-      @clear="handleClear"
-      style="width: 100%"
-      clearable
-    >
-      <el-option
-        v-for="(item, index) in schoolList"
-        :key="item.id ?? index"
-        :label="item.school_name || item.name || String(item.value ?? '')"
-        :value="item[valueField] ?? item.school_name ?? item.name ?? item.id"
-      >
-      </el-option>
-    </el-select>
-  </div>
-</template>
-
 <!-- 学校下拉选择（支持模糊搜索） -->
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import request from '@/utils/request'
+import { ElMessage } from 'element-plus'
 
 interface SchoolItem {
   id?: number | string
@@ -69,15 +43,11 @@ const emit = defineEmits<{
 }>()
 
 // 学校列表
-const schools = ref([])
+const schoolList = ref<SchoolItem[]>([])
 // 加载状态
 const loading = ref(false)
-// 错误信息
-const error = ref('')
 // 本地选中值
 const selectedValue = ref(props.modelValue)
-// 搜索关键字
-const searchKeyword = ref('')
 
 // 定时器（防抖）
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
@@ -105,8 +75,7 @@ watch(
 const fetchSchools = async (keyword = '') => {
   try {
     loading.value = true
-    error.value = ''
-    const params: Record<string> = {}
+    const params: Record<string, string | number> = {}
     if (keyword) params.keyword = keyword
     const response = await request.get('/expert/schools', {
       params,
@@ -114,8 +83,7 @@ const fetchSchools = async (keyword = '') => {
     })
 
     if (response.status === 401) {
-      error.value = '获取学校列表失败'
-      schools.value = []
+      schoolList.value = []
       return
     }
 
@@ -125,42 +93,42 @@ const fetchSchools = async (keyword = '') => {
       (body.code !== undefined && body.code !== 0)
     if (explicitFail) {
       throw new Error(body.msg || '获取学校列表失败')
-      throw new Error(body.msg || '获取学校列表失败')
     }
 
     const raw = body.data
-    const list = Array.isArray(raw) ? raw : Array.isArray(raw?.list) ? raw.list : []
-    schools.value = list.map((item, idx) => {
+    const list: SchoolItem[] = Array.isArray(raw) ? raw : Array.isArray(raw?.list) ? raw.list : []
+    schoolList.value = list.map((item: SchoolItem, idx: number) => {
       const id = item.id ?? idx
       const school_name = item.school_name ?? item.name ?? String(item.value ?? '')
       return { ...item, id, school_name }
     })
 
     // 如果当前selectedValue是对象，尝试匹配
-    if (selectedValue.value && typeof selectedValue.value === 'object') {
-      const match = schools.value.find(
+    const sv = selectedValue.value
+    if (sv && typeof sv === 'object') {
+      const obj = sv as Record<string, unknown>
+      const match = schoolList.value.find(
         (item) =>
-          item.id === selectedValue.value.id ||
-          item.school_name === selectedValue.value.school_name,
+          item.id === obj.id ||
+          item.school_name === obj.school_name,
       )
       if (match) {
         selectedValue.value = match[props.valueField] || match.school_name || match.name
         emit('update:modelValue', selectedValue.value)
       }
     }
-  } catch (err) {
+  } catch (err: unknown) {
     console.error('获取学校列表失败:', err)
-    error.value = err.message || '获取学校列表失败'
-    ElMessage.error(error.value)
-    schools.value = []
+    const msg = err instanceof Error ? err.message : '获取学校列表失败'
+    ElMessage.error(msg)
+    schoolList.value = []
   } finally {
     loading.value = false
   }
 }
 
-// 远程搜索（防抖）
-const remoteMethod = (query: string) => {
-  searchKeyword.value = query
+// 远程搜索回调 — 用户输入时触发（带300ms防抖）
+const remoteSearch = (query: string) => {
   if (debounceTimer) clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => {
     fetchSchools(query)
@@ -169,42 +137,31 @@ const remoteMethod = (query: string) => {
 
 // 下拉打开时加载全部
 const handleVisibleChange = (visible: boolean) => {
-  if (visible && schools.value.length === 0) {
+  if (visible && schoolList.value.length === 0) {
     fetchSchools()
   }
 }
 
-/**
- * 远程搜索回调 — 用户输入时触发
- */
-const remoteSearch = (keyword: string) => {
-  fetchSchools(keyword)
-}
-
-/**
- * 选择变化
- */
+// 选择变化
 const handleChange = (value: string | number | Record<string, any>) => {
   selectedValue.value = value
   emit('update:modelValue', value)
   emit('change', value)
 }
 
-/**
- * 清空时恢复初始列表
- */
+// 清空时恢复初始列表
 const handleClear = () => {
   fetchSchools()
 }
 
-// 组件挂载时加载全部学校（下拉框初始展开有数据）
+// 组件挂载时加载全部学校
 onMounted(() => {
   fetchSchools()
 })
 </script>
 
 <template>
-  <div class="school-select">
+  <div class="customer-levels-dropdown">
     <el-select
       v-model="selectedValue"
       :placeholder="placeholder"
@@ -213,14 +170,15 @@ onMounted(() => {
       :loading="loading"
       filterable
       remote
-      :remote-method="remoteMethod"
+      :remote-method="remoteSearch"
       @change="handleChange"
+      @clear="handleClear"
       @visible-change="handleVisibleChange"
       style="width: 100%"
       clearable
     >
       <el-option
-        v-for="(item, index) in schools"
+        v-for="(item, index) in schoolList"
         :key="item.id ?? index"
         :label="item.school_name || item.name || String(item.value ?? '')"
         :value="item[valueField] ?? item.school_name ?? item.name ?? item.id"
@@ -230,7 +188,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.school-select {
+.customer-levels-dropdown {
   width: 100%;
 }
 </style>
