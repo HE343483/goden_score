@@ -13,7 +13,7 @@ const exporting = ref(false)
 
 /* ── 从 API 加载数据 ── */
 const statsData = ref({
-  total_programs: 0, pending: 0, partial: 0, completed: 0, exempt: 0,
+  total_programs: 0, active: 0, exempt: 0,
 })
 const totalCount = ref(0)
 
@@ -73,9 +73,7 @@ watch(
 function getStatusText(status: number | string): string {
   if (typeof status === 'string') {
     const map: Record<string, string> = {
-      pending: '待评分',
-      partial: '部分已评',
-      completed: '已完成',
+      active: '正常',
       exempt: '免评',
     }
     return map[status] || status
@@ -158,13 +156,8 @@ async function handleExport(exportType: string) {
   <div class="stats-list">
     <div class="stats-row">
       <div class="stats-item"><span class="stats-item-label">节目总数</span><span class="stats-item-num">{{ statsData.total_programs }}</span></div>
-      <div class="stats-item"><span class="stats-item-label">待评分</span><span class="stats-item-num">{{ statsData.pending }}</span></div>
-      <div class="stats-item"><span class="stats-item-label">部分评分</span><span class="stats-item-num">{{ statsData.partial }}</span></div>
-    </div>
-    <div class="stats-row">
-      <div class="stats-item"><span class="stats-item-label">已完成</span><span class="stats-item-num">{{ statsData.completed }}</span></div>
+      <div class="stats-item"><span class="stats-item-label">正常</span><span class="stats-item-num">{{ statsData.active }}</span></div>
       <div class="stats-item"><span class="stats-item-label">免评（弃赛）</span><span class="stats-item-num">{{ statsData.exempt }}</span></div>
-      <div class="stats-item"></div>
     </div>
   </div>
 <el-card shadow="never">
@@ -246,13 +239,9 @@ async function handleExport(exportType: string) {
             @click="activeTab = 'all'"
           >全部</button>
           <button
-            :class="['pill', activeTab === 'pending' && 'pill--active']"
-            @click="activeTab = 'pending'"
-          >待评分</button>
-          <button
-            :class="['pill', activeTab === 'completed' && 'pill--active']"
-            @click="activeTab = 'completed'"
-          >已完成</button>
+            :class="['pill', activeTab === 'active' && 'pill--active']"
+            @click="activeTab = 'active'"
+          >正常</button>
           <button
             :class="['pill', activeTab === 'exempt' && 'pill--active']"
             @click="activeTab = 'exempt'"

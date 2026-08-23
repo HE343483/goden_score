@@ -309,6 +309,9 @@
   margin: 0 10px;
 }
 
+.search-field-buttons {
+  flex: 0 0 400px; /* 容纳「搜索/重置/拍照识别」三个按钮，避免换行 */
+}
 .search-field-buttons .el-form-item__content {
   justify-content: center;
 }

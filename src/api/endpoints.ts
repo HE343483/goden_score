@@ -68,3 +68,14 @@ export const EXPORT = {
   /** GET 导出文件 ?type= */
   FILE: (type: string) => `/admin/exports/${type}` as const,
 } as const
+
+/**
+ * 通用模块（图片上传 / OCR 识别）
+ * 对照: apps/commons/api.py
+ */
+export const COMMONS = {
+  /** POST 图片上传（multipart/form-data，字段名 file，jpg/jpeg/png ≤5MB） */
+  UPLOAD: '/upload',
+  /** POST OCR 表格识别 { image_id, url, need_rotate } */
+  OCR_RECOGNIZE: '/ocr/recognize',
+} as const

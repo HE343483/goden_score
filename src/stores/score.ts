@@ -28,7 +28,7 @@ export interface ProgramWithScore {
   excludedCount?: number
   totalReviewers?: number
   exemptReason?: string | null
-  status: number | string   // expert: 0/1/2/-1  admin: pending/partial/completed/exempt
+  status: number | string   // expert: 0/1/2/-1/-2  admin: active/exempt
   award: string
   judges: JudgeScore[]
 }

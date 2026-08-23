@@ -1,10 +1,17 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, ElInput } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useScoreStore, type ProgramWithScore } from '@/stores/score'
-import { fetchExpertPrograms, fetchSchools, saveScores, submitScores } from './ScoringView.js'
+import {
+  fetchExpertPrograms,
+  fetchSchools,
+  saveScores,
+  submitScores,
+  uploadImage,
+  recognizeOCR,
+} from './ScoringView.js'
 import ExpertSchools from '@/comment/ExpertSchools.vue'
 
 const router = useRouter()
@@ -37,6 +44,129 @@ async function fetchSchoolOptions() {
   } catch {
     schoolOptions.value = []
   }
+}
+
+/* ═══════════════════════════════════════
+   拍照识别（上传图片 → OCR 识别）
+   ═══════════════════════════════════════ */
+
+/** OCR 单行识别结果（对应后端 /api/ocr/recognize rows[]） */
+interface OcrMismatchField {
+  field: string
+  ocr_value: string | null
+  db_value: string | null
+}
+
+interface OcrRow {
+  row_no: string
+  recognized: {
+    program_code: string | null
+    school_name: string | null
+    program_name: string | null
+    score: number | null
+  }
+  match: {
+    matched: boolean
+    program_id: number | null
+    mismatched_fields: OcrMismatchField[]
+    block_reason: string | null
+  }
+  status: 'ok' | 'blocked' | 'failed' | 'skipped'
+  modifiable: boolean
+  score: number | null
+}
+
+interface OcrSummary {
+  ok: number
+  blocked: number
+  failed: number
+  skipped: number
+  total: number
+}
+
+interface OcrResult {
+  image_id: number | null
+  recognized_count: number
+  summary: OcrSummary
+  rows: OcrRow[]
+}
+
+const cameraInputRef = ref<HTMLInputElement | null>(null)
+const photoLoading = ref(false)      // 上传/识别进行中 loading
+const ocrDialogVisible = ref(false)  // 识别结果弹窗显隐
+const ocrResult = ref<OcrResult | null>(null)
+
+/** 弹窗表格数据（识别结果行） */
+const ocrRows = computed<OcrRow[]>(() => ocrResult.value?.rows ?? [])
+
+/** status → 中文文案 */
+const OCR_STATUS_TEXT: Record<OcrRow['status'], string> = {
+  ok: '已导入',
+  blocked: '已锁定',
+  failed: '匹配失败',
+  skipped: '已跳过',
+}
+
+/** status → el-tag 颜色类型 */
+const OCR_STATUS_TAG_TYPE: Record<OcrRow['status'], 'success' | 'warning' | 'danger' | 'info'> = {
+  ok: 'success',
+  blocked: 'warning',
+  failed: 'danger',
+  skipped: 'info',
+}
+
+function ocrStatusText(status: string): string {
+  return OCR_STATUS_TEXT[status as OcrRow['status']] ?? status
+}
+
+function ocrStatusType(status: string) {
+  return OCR_STATUS_TAG_TYPE[status as OcrRow['status']] ?? 'info'
+}
+
+/** 点击「拍照识别」：唤起平板摄像头拍照 */
+function handlePhotoRecognize() {
+  const input = cameraInputRef.value
+  if (!input) return
+  input.value = '' // 重置以允许连续选择同一文件
+  input.click()
+}
+
+/** 拍照完成：自动上传 → 自动 OCR 识别 → 弹窗展示结果 */
+async function onCameraChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  photoLoading.value = true
+
+  try {
+    // 1. 上传图片（POST /api/upload）
+    const uploaded = await uploadImage(file)
+    if (!uploaded?.id || !uploaded?.url) {
+      ElMessage.error('上传失败：接口未返回图片信息')
+      return
+    }
+    // 2. 调用 OCR 识别（POST /api/ocr/recognize）
+    const result = await recognizeOCR({ image_id: uploaded.id, url: uploaded.url })
+    if (!result) {
+      ElMessage.error('识别失败：接口未返回识别结果')
+      return
+    }
+    // 3. 展示识别结果弹窗
+    ocrResult.value = result
+    ocrDialogVisible.value = true
+  } catch {
+    // 后端 code!==0 / HTTP 错误已由 request 拦截器统一弹窗，此处仅兜底
+  } finally {
+    photoLoading.value = false
+    if (input) input.value = ''
+  }
+}
+
+/** 弹窗「查看列表」：关闭弹窗并刷新列表 */
+function handleViewList() {
+  ocrDialogVisible.value = false
+  ocrResult.value = null
+  reloadPrograms()
 }
 
 const total = ref(0)
@@ -322,10 +452,60 @@ onUnmounted(() => {
               <el-form-item label="　" class="search-field search-field-buttons">
                 <el-button type="primary" @click="handleSearch">搜索</el-button>
                 <el-button @click="handleReset">重置</el-button>
+                <el-button
+                  type="success"
+                  :loading="photoLoading"
+                  @click="handlePhotoRecognize"
+                >拍照识别</el-button>
               </el-form-item>
             </div>
           </el-form>
         </div>
+
+        <!-- 拍照识别：隐藏的摄像头文件选择 + 识别结果弹窗 -->
+        <input
+          ref="cameraInputRef"
+          type="file"
+          accept="image/jpeg,image/png"
+          capture="environment"
+          class="camera-input"
+          @change="onCameraChange"
+        />
+        <el-dialog
+          v-model="ocrDialogVisible"
+          :title="`识别完成，共识别 ${ocrResult?.recognized_count ?? 0} 条数据`"
+          width="92%"
+          top="6vh"
+          append-to-body
+        >
+          <div class="ocr-dialog-body">
+            <el-table :data="ocrRows" border size="small" max-height="60vh" style="width: 100%">
+              <el-table-column prop="row_no" label="序号" width="60" align="center" />
+              <el-table-column prop="recognized.program_code" label="项目编码" min-width="170" align="center" />
+              <el-table-column prop="recognized.school_name" label="参展学校" min-width="120" align="center" />
+              <el-table-column prop="recognized.program_name" label="参展项目" min-width="140" align="center" />
+              <el-table-column prop="recognized.score" label="识别分数" width="90" align="center" />
+              <el-table-column label="状态" width="140" align="center">
+                <template #default="{ row }">
+                  <div class="ocr-status-cell">
+                    <el-tag :type="ocrStatusType(row.status)" size="small">
+                      {{ ocrStatusText(row.status) }}
+                    </el-tag>
+                    <!-- blocked 时展示阻塞原因 -->
+                    <span
+                      v-if="row.status === 'blocked' && row.match?.block_reason"
+                      class="ocr-block-reason"
+                    >{{ row.match.block_reason }}</span>
+                  </div>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+          <template #footer>
+            <el-button type="primary" @click="handleViewList">查看列表</el-button>
+          </template>
+        </el-dialog>
+
         <!-- 评分列表 -->
         <div class="content-card">
           <div >
@@ -538,5 +718,24 @@ onUnmounted(() => {
 :deep(.el-table .el-table-column--selection .el-checkbox) {
   transform: scale(1.35);
   transform-origin: center;
+}
+
+/* 隐藏摄像头文件选择框（仅作为唤起摄像头的入口） */
+.camera-input {
+  display: none;
+}
+
+/* OCR 结果弹窗：状态列（标签 + 阻塞原因） */
+.ocr-status-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.ocr-block-reason {
+  font-size: 12px;
+  line-height: 1.3;
+  color: #e6a23c;
+  word-break: break-all;
 }
 </style>

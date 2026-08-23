@@ -15,9 +15,7 @@ export async function fetchAdminStats() {
   const data = res.data?.data ?? res.data ?? {}
   return {
     total_programs:     data.total_programs ?? 0,
-    pending:            data.pending ?? 0,
-    partial:            data.partial ?? 0,
-    completed:          data.completed ?? 0,
+    active:             data.active ?? 0,
     exempt:             data.exempt ?? 0,
     total_assignments:  data.total_assignments ?? 0,
     effective_scored:   data.effective_scored ?? 0,
@@ -102,7 +100,7 @@ export async function fetchAdminPrograms(params = {}) {
 /**
  * 管理端 — 更新豁免状态（弃赛/取消弃赛）
  * POST /api/admin/exemptions
- * @param {{ program_id: number, exemption_type: 'abandoned'|'cancel_abandoned'|'manual_exclude'|'cancel_exclude', reviewer_id?: number }} payload
+ * @param {{ program_id: number, exemption_type: 'abandoned'|'cancel_abandoned', reviewer_id?: number }} payload
  */
 export async function updateExemption(payload) {
   await request.post('/admin/exemptions', payload)
