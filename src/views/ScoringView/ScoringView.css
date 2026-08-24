@@ -797,3 +797,35 @@
   .app-footer { padding: 8px 0; }
   .footer-text { font-size: 11px; }
 }
+
+/*自适应 — 平板 / 紧凑桌面 (769–1200px)：搜索框三列等宽 + 按钮区第二排 */
+@media (min-width: 769px) and (max-width: 1200px) {
+  .search-form { --el-form-label-width: 88px; }
+  .search-form-inner {
+    justify-content: flex-start;
+    gap: 12px 12px;
+  }
+  .search-field {
+    flex: 1 1 0;
+    max-width: calc((100% - 24px) / 3);
+    min-width: 180px;
+    margin: 0;
+  }
+  /* 按钮区占满整行换到第二排、居中显示，按钮间留较大空隙 */
+  .search-field-buttons {
+    flex: 1 1 100%;
+    max-width: 100%;
+    margin: 0;
+  }
+  .search-field-buttons :deep(.el-form-item__content) {
+    justify-content: center;
+    flex-wrap: nowrap;
+    gap: 16px;
+  }
+  .search-field-buttons :deep(.el-button) {
+    flex: 0 0 auto;
+    margin-left: 0;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+}
