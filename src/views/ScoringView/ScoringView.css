@@ -759,6 +759,7 @@
   .search-field-buttons :deep(.el-form-item__content) {
     justify-content: flex-start;
     flex-wrap: nowrap;
+    gap: 8px;
   }
   /* 三个操作按钮等宽铺满一行，避免换行 */
   .search-field-buttons :deep(.el-button) {
