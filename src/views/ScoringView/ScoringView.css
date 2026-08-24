@@ -758,12 +758,35 @@
   .search-field-buttons { flex: 1 1 100%; }
   .search-field-buttons :deep(.el-form-item__content) {
     justify-content: flex-start;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+  }
+  /* 三个操作按钮等宽铺满一行，避免换行 */
+  .search-field-buttons :deep(.el-button) {
+    flex: 1;
+    margin-left: 0;
+    padding-left: 8px;
+    padding-right: 8px;
   }
 
   .content-card { padding: 12px 12px 12px; border-radius: var(--radius-md); }
 
   .section-title { font-size: 16px; }
+
+  /* 状态标签页横向可滚动，避免超出手机屏幕 */
+  .content-header-row { align-items: flex-start; }
+  .content-tabs {
+    width: 100%;
+    overflow: hidden;
+  }
+  .content-tabs :deep(.el-tabs__header) { margin-bottom: 0; }
+  .content-tabs :deep(.el-tabs__nav-scroll) {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .content-tabs :deep(.el-tabs__nav-scroll::-webkit-scrollbar) {
+    display: none;
+  }
 
   .score-input { width: 110px; }
 
