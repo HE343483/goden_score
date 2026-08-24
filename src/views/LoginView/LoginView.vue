@@ -327,5 +327,19 @@ function submit() {
 
   .bg-seal--1 { display: none; }
   .bg-seal--2 { font-size: 100px; bottom: -5%; }
+
+  /* 手机端标题/副标题允许换行，缩小字号字距避免溢出 */
+  .login-title {
+    white-space: normal;
+    font-size: 22px;
+    letter-spacing: 3px;
+  }
+  .login-subtitle {
+    font-size: 18px;
+    letter-spacing: 6px;
+  }
+  .login-title-divider {
+    margin: 12px auto;
+  }
 }
 </style>

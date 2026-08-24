@@ -302,3 +302,19 @@ button.el-button--primary.is-link {
 .el-table__body-wrapper .el-table__row > td:first-child {
   padding-left: 12px;
 }
+
+/* ═══════════════════════════════════════
+   移动端 / 平板便携适配
+   ═══════════════════════════════════════ */
+
+/* 弹窗在窄屏下接近全屏，避免被固定宽度挤压截断 */
+@media (max-width: 768px) {
+  .el-dialog {
+    --el-dialog-width: 94% !important;
+  }
+
+  /* 表格横向滚动兜底，防止列被压缩 */
+  .el-table__body-wrapper {
+    overflow-x: auto;
+  }
+}

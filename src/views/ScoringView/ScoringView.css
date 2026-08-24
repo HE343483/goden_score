@@ -707,6 +707,33 @@
   }
 }
 
+/*自适应 — 1024px 以下：侧栏改为离屏抽屉（平板竖屏 / 手机）*/
+@media (max-width: 1024px) {
+  .scoring-layout { position: relative; }
+
+  /* 侧栏固定定位，默认滑出视口 */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 260px;
+    min-width: 0;
+    transform: translateX(-100%);
+    z-index: 102;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .sidebar.sidebar--open {
+    transform: translateX(0);
+  }
+
+  /* 展示汉堡按钮（默认隐藏） */
+  .hamburger-btn {
+    display: flex;
+  }
+}
+
 /*自适应 — 768px 以下（平板竖屏 / 手机）*/
 @media (max-width: 768px) {
   .top-header { padding: 0 12px; height: 46px; }
@@ -723,6 +750,16 @@
   .toolbar-right { justify-content: flex-end; }
   .search-input { width: 100%; min-width: 0; }
   .status-select { width: 100%; min-width: 0; }
+
+  /* 搜索区：字段与按钮区满宽、label 缩短、按钮自适应换行 */
+  .search-form { --el-form-label-width: 82px; }
+  .search-form-inner { justify-content: flex-start; gap: 8px; }
+  .search-field { flex: 1 1 100%; max-width: 100%; margin: 0; }
+  .search-field-buttons { flex: 1 1 100%; }
+  .search-field-buttons :deep(.el-form-item__content) {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
 
   .content-card { padding: 12px 12px 12px; border-radius: var(--radius-md); }
 
