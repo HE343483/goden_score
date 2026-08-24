@@ -32,8 +32,11 @@ request.interceptors.request.use(
 
 /** 后端错误响应体格式 */
 interface ApiErrorBody {
-  code?: string
+  code?: string | number
+  msg?: string
   message?: string
+  data?: { step?: string; error?: string } | unknown
+  detail?: unknown
   errors?: unknown
 }
 
@@ -53,11 +56,20 @@ const HTTP_ERROR_MESSAGES: Record<number, string> = {
 
 /**
  * 从后端错误体提取人类可读消息
+ * 兼容后端两种字段名：message（旧）/ msg（json_success、json_fail 使用）
  */
 function extractMessage(status: number, data: unknown): string {
   if (data && typeof data === 'object') {
     const body = data as ApiErrorBody
     if (body.message) return body.message
+    if (body.msg) return body.msg
+    // Django Ninja 校验错误：detail 为数组，取第一条的 msg
+    if (Array.isArray(body.detail) && body.detail.length > 0) {
+      const first = body.detail[0]
+      if (first && typeof first === 'object' && 'msg' in first) return String(first.msg)
+      return String(first)
+    }
+    if (body.errors) return String(body.errors)
   }
   return HTTP_ERROR_MESSAGES[status] ?? `请求异常 (${status})`
 }
@@ -67,7 +79,13 @@ request.interceptors.response.use(
     // 业务层 code 非 0 也算异常（后端约定 { code: 0 } 为成功）
     const body = response.data
     if (body && typeof body === 'object' && 'code' in body && body.code !== 0 && body.code !== '0') {
-      const message = (body as ApiErrorBody).message ?? '操作失败'
+      const apiBody = body as ApiErrorBody
+      let message = apiBody.message ?? apiBody.msg ?? '操作失败'
+      // 后端 data 里可能带更细的 error，拼到提示后面便于定位
+      const detail = apiBody.data as { error?: string } | undefined
+      if (detail?.error && !message.includes(detail.error)) {
+        message += `：${detail.error}`
+      }
       ElMessage.error(message)
       return Promise.reject(new Error(message))
     }
